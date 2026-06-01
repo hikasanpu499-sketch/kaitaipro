@@ -49,23 +49,7 @@ const calcSub = items => items.reduce((s,i)=>s+(Number(i.qty)||0)*(Number(i.unit
 const emptyItem = () => ({id:Date.now()+Math.random(),category:CATEGORIES[0],description:"",qty:1,unit:"式",unitPrice:0});
 const sc = s => STATUS_COLORS[s]||"#9ca3af";
 
-const SAMPLE = [
-  {id:1,no:"KT-20260528-042",createdAt:"2026-05-28",dueDate:"2026-06-30",flowStatus:"請求済",
-   client:{name:"株式会社山田建設",address:"東京都新宿区西新宿1-2-3",person:"山田 太郎",tel:"03-1234-5678"},
-   site:"渋谷区代々木2丁目 木造2階建て解体工事",
-   items:[{id:1,category:"建物解体工事",description:"木造2階建て 延床面積120㎡",qty:1,unit:"式",unitPrice:850000},{id:2,category:"産業廃棄物処理",description:"廃材・コンクリートガラ処分",qty:15,unit:"t",unitPrice:28000},{id:3,category:"整地工事",description:"砕石敷均し",qty:120,unit:"㎡",unitPrice:1500}],
-   memo:"着工前にアスベスト事前調査済み"},
-  {id:2,no:"KT-20260515-031",createdAt:"2026-05-15",dueDate:"2026-06-15",flowStatus:"入金済",
-   client:{name:"田中不動産株式会社",address:"神奈川県横浜市中区本町4-44",person:"田中 花子",tel:"045-111-2222"},
-   site:"横浜市港北区 RC造3階建て内装解体",
-   items:[{id:1,category:"内装解体工事",description:"RC造3F 延床200㎡ 内装一式",qty:1,unit:"式",unitPrice:1200000},{id:2,category:"産業廃棄物処理",description:"建設廃材処分",qty:20,unit:"t",unitPrice:25000}],
-   memo:""},
-  {id:3,no:"KT-20260601-015",createdAt:"2026-06-01",dueDate:"2026-07-01",flowStatus:"見積中",
-   client:{name:"佐藤工務店",address:"埼玉県さいたま市大宮区1-1",person:"佐藤 次郎",tel:"048-333-4444"},
-   site:"さいたま市 鉄骨造倉庫解体 500㎡",
-   items:[{id:1,category:"建物解体工事",description:"鉄骨造倉庫 500㎡",qty:1,unit:"式",unitPrice:2200000},{id:2,category:"重機回送費",description:"重機回送（往復）",qty:2,unit:"回",unitPrice:85000}],
-   memo:"隣地養生要確認"},
-];
+const SAMPLE = [];
 
 const DEFAULT_CO = {name:"株式会社〇〇解体",zipcode:"100-0001",address:"東京都千代田区〇〇1-1-1",tel:"03-0000-0000",invoiceNo:"T1234567890123",bankName:"〇〇銀行",bankBranch:"〇〇支店",bankType:"普通",bankNo:"1234567",bankHolder:"カ）〇〇カイタイ"};
 

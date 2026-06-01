@@ -36,7 +36,6 @@ input,select,textarea{font-family:inherit;}
 const {useState} = React;
 
 const AC = "#c84b00";
-const TAX = 0.10;
 const FLOW_STEPS = ["見積","受注","請求","入金","完了"];
 const STATUS_COLORS = {"見積中":"#3b82f6","受注済":"#8b5cf6","請求済":"#f59e0b","入金済":"#16a34a","完了":"#9ca3af","キャンセル":"#ef4444"};
 const CATEGORIES = ["建物解体工事","内装解体工事","基礎解体工事","産業廃棄物処理","アスベスト除去工事","重機回送費","養生・仮設工事","整地工事","その他"];
@@ -164,19 +163,20 @@ function App(){
   const [sub,setSub]=useState(null);
   const [selected,setSelected]=useState(null);
   const [form,setForm]=useState(null);
-  const [aiLoad,setAiLoad]=useState(false);
-  const [aiMsg,setAiMsg]=useState("");
   const [co,setCo]=useState(DEFAULT_CO);
+  const [taxRate,setTaxRate]=useState(10); // 消費税率（%）
   const [filter,setFilter]=useState("ALL");
   const [showPrint,setShowPrint]=useState(false);
   const [printTarget,setPrintTarget]=useState(null);
+
+  const TAX = taxRate / 100;
 
   function goHome(){setTab("home");setSub(null);setForm(null);setSelected(null);}
 
   function startNew(){
     setForm({no:genNo(),createdAt:today(),dueDate:addDays(today(),30),flowStatus:"見積中",
       client:{name:"",address:"",person:"",tel:""},site:"",items:[emptyItem()],memo:""});
-    setAiMsg("");setSub("new");setTab("home");
+    setSub("new");setTab("home");
   }
 
   function save(){
@@ -188,24 +188,6 @@ function App(){
   function updateFlow(id,status){
     setDocs(p=>p.map(d=>d.id===id?{...d,flowStatus:status}:d));
     if(selected?.id===id)setSelected(s=>({...s,flowStatus:status}));
-  }
-
-  async function aiEstimate(){
-    if(!form.site)return alert("工事概要を入力してください");
-    setAiLoad(true);setAiMsg("");
-    try{
-      const res=await fetch("https://api.anthropic.com/v1/messages",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,
-          messages:[{role:"user",content:`解体工事の見積をJSON配列のみで返してください。現場:「${form.site}」\n形式:[{"category":"工事種別","description":"内容","qty":数値,"unit":"単位","unitPrice":数値}]\n3〜5項目、説明文不要`}]})
-      });
-      const data=await res.json();
-      const text=data.content?.find(b=>b.type==="text")?.text||"";
-      const items=JSON.parse(text.replace(/```json|```/g,"").trim());
-      setForm(p=>({...p,items:items.map((it,i)=>({...it,id:Date.now()+i}))}));
-      setAiMsg("✦ AIが工事項目を生成しました。金額を確認してください。");
-    }catch{setAiMsg("AI生成失敗。手動で入力してください。");}
-    setAiLoad(false);
   }
 
   const subTotal=form?calcSub(form.items):0;
@@ -330,11 +312,7 @@ function App(){
             </div>
             <div className="card" style={{padding:16,marginBottom:12}}>
               <div style={{fontWeight:700,fontSize:12,color:"#374151",marginBottom:10}}>工事概要 *</div>
-              <div style={{display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
-                <div style={{flex:1,minWidth:180}}><input className="ifield" placeholder="例: 渋谷区代々木2丁目 木造2階建て解体工事 延床120㎡" value={form.site} onChange={e=>setForm(p=>({...p,site:e.target.value}))}/></div>
-                <button className="bai" onClick={aiEstimate} disabled={aiLoad}>{aiLoad?"⏳...":"✦ AI自動生成"}</button>
-              </div>
-              {aiMsg&&<div style={{marginTop:8,padding:"8px 12px",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,fontSize:12,color:"#1d4ed8"}}>{aiMsg}</div>}
+              <input className="ifield" placeholder="例: 渋谷区代々木2丁目 木造2階建て解体工事 延床120㎡" value={form.site} onChange={e=>setForm(p=>({...p,site:e.target.value}))}/>
             </div>
             <div className="card" style={{padding:16,marginBottom:12}}>
               <div style={{fontWeight:700,fontSize:12,color:"#374151",marginBottom:10}}>工事明細</div>
@@ -482,24 +460,63 @@ function App(){
           <div className="fade">
             <div style={{fontWeight:900,fontSize:20,marginBottom:16}}>使い方ガイド</div>
             <div style={{background:`linear-gradient(135deg,${AC},#e06030)`,borderRadius:10,padding:"18px 20px",marginBottom:16,color:"#fff"}}>
-              <div style={{fontWeight:900,fontSize:16,marginBottom:6}}>🚀 まずここから始めよう</div>
-              <div style={{fontSize:13,opacity:.9,lineHeight:1.7}}>① 右下「＋」→ 案件登録<br/>② AI生成で見積項目を自動作成<br/>③ PDF出力して取引先に送付</div>
+              <div style={{fontWeight:900,fontSize:16,marginBottom:8}}>📱 基本の流れ</div>
+              <div style={{fontSize:14,lineHeight:2}}>
+                <div>① 右下の <strong>「＋」</strong> → 案件を登録</div>
+                <div>② フローボタンで <strong>進捗を管理</strong></div>
+                <div>③ 詳細画面から <strong>PDF出力</strong></div>
+              </div>
             </div>
             {[
-              {icon:"📋",title:"STEP 1 ― 案件を登録する",body:"右下の「＋」ボタンをタップ。取引先名と工事概要を入力して「✦ AI自動生成」を押すと工事項目が自動入力されます。金額を確認して「保存」してください。"},
-              {icon:"🔄",title:"STEP 2 ― 業務フローを進める",body:"案件一覧の各案件にフローボタンが表示されます。見積→受注→請求→入金→完了の順にボタンをタップするだけでステータスが変わります。"},
-              {icon:"📄",title:"STEP 3 ― PDF出力する",body:"案件をタップして詳細画面を開き「📄 PDF出力」ボタンをタップ。「PDFとして保存」→「印刷」→「PDFに保存」でダウンロードできます。"},
-              {icon:"📊",title:"STEP 4 ― 売上を確認する",body:"下メニューの「集計」をタップ。未入金・入金済・受注残が一目でわかります。"},
-              {icon:"⚙️",title:"STEP 5 ― 会社情報を設定する",body:"下メニューの「設定」から会社名・インボイス登録番号・振込先口座を入力してください。PDF出力時に自動で反映されます。"},
+              {icon:"➕", title:"案件の登録方法", color:"#3b82f6", steps:[
+                "右下のオレンジの「＋」ボタンをタップ",
+                "取引先名（会社名）を入力",
+                "工事概要（場所・工事内容）を入力",
+                "工事明細（種別・数量・単価）を入力",
+                "「保存」ボタンをタップして完了",
+              ]},
+              {icon:"🔄", title:"進捗の管理方法", color:"#8b5cf6", steps:[
+                "一覧画面に案件ごとのフローボタンが表示される",
+                "「見積」→「受注」→「請求」→「入金」→「完了」の順に進む",
+                "該当するボタンをタップするだけでステータスが変わる",
+                "色が変わって進捗が一目でわかる",
+              ]},
+              {icon:"📄", title:"PDF（請求書・見積書）の出力方法", color:"#c84b00", steps:[
+                "一覧から案件をタップして詳細画面を開く",
+                "「📄 PDF出力」ボタンをタップ",
+                "「PDFとして保存」ボタンをタップ",
+                "「印刷」→「送信先: PDFに保存」を選んで保存",
+              ]},
+              {icon:"⚙️", title:"初期設定（最初にやること）", color:"#6b7280", steps:[
+                "下メニューの「設定」をタップ",
+                "会社名・住所・電話番号を入力",
+                "インボイス登録番号（T+13桁）を入力",
+                "振込先の銀行口座を入力",
+                "消費税率を確認（デフォルト10%）",
+                "「保存する」をタップ",
+              ]},
             ].map((g,i)=>(
-              <div key={i} className="card" style={{padding:"16px",marginBottom:10}}>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+              <div key={i} className="card" style={{marginBottom:10,overflow:"hidden"}}>
+                <div style={{padding:"14px 16px",background:`${g.color}08`,borderBottom:"1px solid #f3f4f6",display:"flex",alignItems:"center",gap:10}}>
                   <span style={{fontSize:20}}>{g.icon}</span>
-                  <div style={{fontWeight:700,fontSize:14}}>{g.title}</div>
+                  <div style={{fontWeight:700,fontSize:14,color:g.color}}>{g.title}</div>
                 </div>
-                <div style={{fontSize:13,color:"#6b7280",lineHeight:1.7}}>{g.body}</div>
+                <div style={{padding:"12px 16px"}}>
+                  {g.steps.map((s,j)=>(
+                    <div key={j} style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:8,fontSize:13,color:"#374151"}}>
+                      <span style={{width:20,height:20,borderRadius:"50%",background:g.color,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,flexShrink:0,marginTop:1}}>{j+1}</span>
+                      {s}
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
+            <div className="card" style={{padding:16,background:"#fffbeb",border:"1px solid #fde68a"}}>
+              <div style={{fontSize:12,color:"#92400e",lineHeight:1.8}}>
+                💡 <strong>困ったときは</strong><br/>
+                PDF出力はパソコンのChromeブラウザから開くと一番きれいに出力されます。スマホからも可能ですが、印刷設定の「背景のグラフィック」をオンにすることをお勧めします。
+              </div>
+            </div>
           </div>
         )}
 
@@ -517,6 +534,24 @@ function App(){
               <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🧾 インボイス登録番号</div>
               <input className="ifield" placeholder="T1234567890123（T+13桁）" value={co.invoiceNo} onChange={e=>setCo(p=>({...p,invoiceNo:e.target.value}))}/>
               <div style={{fontSize:11,color:"#9ca3af",marginTop:6}}>国税庁に登録済みの番号を入力してください。</div>
+            </div>
+            <div className="card" style={{padding:20,marginBottom:14}}>
+              <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>💴 消費税率</div>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <input className="ifield" type="number" value={taxRate} min="0" max="30"
+                  onChange={e=>setTaxRate(Number(e.target.value))}
+                  style={{maxWidth:100,textAlign:"right",fontSize:18,fontWeight:700}}/>
+                <span style={{fontSize:16,fontWeight:700,color:"#374151"}}>%</span>
+                <span style={{fontSize:12,color:"#9ca3af"}}>（通常は10%）</span>
+              </div>
+              <div style={{display:"flex",gap:8,marginTop:10}}>
+                {[0,8,10].map(r=>(
+                  <button key={r} onClick={()=>setTaxRate(r)}
+                    style={{background:taxRate===r?AC:"#f3f4f6",color:taxRate===r?"#fff":"#374151",border:"none",padding:"6px 14px",borderRadius:6,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                    {r}%
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="card" style={{padding:20,marginBottom:20}}>
               <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🏦 振込先口座</div>

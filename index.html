@@ -85,32 +85,32 @@ function PrintView({doc,co,tax:TAX,onClose}){
     const html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>${isInv?"請求書":"見積書"} - ${doc.client.name}</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet"/>
 <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Noto Sans JP',sans-serif;font-size:13px;color:#111;padding:40px;max-width:794px;margin:0 auto;}
-.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #c84b00;padding-bottom:16px;margin-bottom:24px;}
-.brand{font-size:28px;font-weight:900;color:#c84b00;letter-spacing:0.08em;}
-.doc-type{font-size:18px;font-weight:700;margin-top:4px;}
+.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #111;padding-bottom:16px;margin-bottom:24px;}
+.brand{font-size:22px;font-weight:900;color:#111;letter-spacing:0.05em;}
+.doc-type{font-size:28px;font-weight:900;color:#111;margin-top:4px;}
 .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px;}
 .info-box{background:#fafafa;padding:14px;border:1px solid #e5e7eb;}
 .label{font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;}
 .site-box{background:#fafafa;padding:10px 14px;margin-bottom:20px;}
-.total-box{text-align:center;padding:14px;border:2px solid #c84b00;margin-bottom:20px;}
-.total-amount{font-size:32px;font-weight:900;color:#c84b00;}
+.total-box{text-align:center;padding:14px;border:2px solid #111;margin-bottom:20px;}
+.total-amount{font-size:32px;font-weight:900;color:#111;}
 table{width:100%;border-collapse:collapse;margin-bottom:16px;}
-th{background:#c84b00;color:#fff;padding:8px 10px;font-size:11px;}
+th{background:#111;color:#fff;padding:8px 10px;font-size:11px;}
 td{padding:8px 10px;border-bottom:1px solid #f3f4f6;}
 .tr-even{background:#fafafa;}
 .subtotal-table{float:right;min-width:260px;}
 .subtotal-table td{padding:4px 14px;}
-.total-row td{border-top:2px solid #c84b00;padding:10px 14px;font-weight:700;}
+.total-row td{border-top:2px solid #111;padding:10px 14px;font-weight:700;}
 .bank-box{background:#fafafa;border:1px solid #e5e7eb;padding:12px 14px;margin-bottom:16px;}
 .footer{margin-top:32px;padding-top:12px;border-top:1px solid #f3f4f6;font-size:10px;color:#d1d5db;text-align:center;}
 @media print{button{display:none!important;}}
 </style></head><body>
-<div style="text-align:right;margin-bottom:16px;"><button onclick="window.print()" style="background:#c84b00;color:#fff;border:none;padding:10px 20px;font-size:14px;font-weight:700;border-radius:4px;cursor:pointer;">🖨 印刷 / PDF保存</button></div>
+<div style="text-align:right;margin-bottom:16px;"><button onclick="window.print()" style="background:#111;color:#fff;border:none;padding:10px 20px;font-size:14px;font-weight:700;border-radius:4px;cursor:pointer;">🖨 印刷 / PDF保存</button></div>
 <div class="header">
-  <div><div class="brand">KAITAI PRO</div><div class="doc-type">${isInv?"請求書":"見積書"}</div></div>
+  <div><div class="brand">${co.name}</div><div class="doc-type">${isInv?"請求書":"見積書"}</div></div>
   <div style="text-align:right;font-size:11px;color:#6b7280;line-height:2;">
     <div>書類番号: ${doc.no}</div><div>発行日: ${doc.createdAt}</div>
-    ${isInv?`<div style="color:#c84b00;font-weight:700;">支払期限: ${doc.dueDate}</div>`:""}
+    ${isInv?`<div style="font-weight:700;">支払期限: ${doc.dueDate}</div>`:""}
   </div>
 </div>
 <div class="info-grid">

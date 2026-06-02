@@ -462,14 +462,14 @@ function App(){
             <div style={{background:`linear-gradient(135deg,${AC},#e06030)`,borderRadius:10,padding:"18px 20px",marginBottom:16,color:"#fff"}}>
               <div style={{fontWeight:900,fontSize:16,marginBottom:8}}>📱 基本の流れ</div>
               <div style={{fontSize:14,lineHeight:2}}>
-                <div>① 右下の <strong>「＋」</strong> → 案件を登録</div>
+                <div>① 右上の <strong>「＋ 新規」</strong> → 案件を登録</div>
                 <div>② フローボタンで <strong>進捗を管理</strong></div>
                 <div>③ 詳細画面から <strong>PDF出力</strong></div>
               </div>
             </div>
             {[
               {icon:"➕", title:"案件の登録方法", color:"#3b82f6", steps:[
-                "右下のオレンジの「＋」ボタンをタップ",
+                "右上の「＋ 新規」ボタンをタップ",
                 "取引先名（会社名）を入力",
                 "工事概要（場所・工事内容）を入力",
                 "工事明細（種別・数量・単価）を入力",
@@ -578,11 +578,6 @@ function App(){
         </div>
       )}
 
-      {/* フローティング＋ボタン */}
-      {!sub&&tab==="home"&&(
-        <button onClick={startNew}
-          style={{position:"fixed",bottom:80,right:20,width:52,height:52,borderRadius:"50%",background:AC,color:"#fff",border:"none",fontSize:24,cursor:"pointer",boxShadow:"0 4px 14px rgba(200,75,0,.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:201}}>＋</button>
-      )}
     </div>
   );
 }

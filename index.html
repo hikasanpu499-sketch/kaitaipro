@@ -350,6 +350,7 @@ function LoginScreen({onLogin}){
 function App(){
   const [user,setUser]=useState(null);
   const [authLoading,setAuthLoading]=useState(true);
+  const [role,setRole]=useState("staff"); // デフォルトはスタッフ
   const [docs,setDocs]=useState([]);
   const [tab,setTab]=useState("home");
   const [sub,setSub]=useState(null);
@@ -363,6 +364,7 @@ function App(){
   const [dbLoading,setDbLoading]=useState(false);
 
   const TAX = taxRate / 100;
+  const isAdmin = role === "admin";
 
   // 認証状態を監視
   useEffect(()=>{
@@ -376,10 +378,16 @@ function App(){
     return ()=>subscription.unsubscribe();
   },[]);
 
-  // ログイン後にデータを読み込む
+  // ログイン後にデータと権限を読み込む
   useEffect(()=>{
-    if(user) loadDocs();
+    if(user){ loadDocs(); loadRole(); }
   },[user]);
+
+  async function loadRole(){
+    const {data}=await sb.from("members").select("role").eq("email",user.email).single();
+    if(data) setRole(data.role);
+    else setRole("admin"); // membersに登録がない場合は管理者（最初のユーザー）
+  }
 
   async function loadDocs(){
     setDbLoading(true);
@@ -462,7 +470,8 @@ function App(){
           <span style={{fontSize:16}}>🏗</span>
           <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:AC,letterSpacing:"0.1em"}}>KAITAI PRO</div>
         </div>
-        <div style={{display:"flex",gap:8}}>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{fontSize:10,color:isAdmin?"#c84b00":"#3b82f6",background:isAdmin?"#fff7f0":"#eff6ff",border:`1px solid ${isAdmin?"#fbd5b5":"#bfdbfe"}`,padding:"2px 8px",borderRadius:999,fontWeight:700}}>{isAdmin?"管理者":"スタッフ"}</span>
           {!sub&&tab==="home"&&<button className="bp" style={{fontSize:12,padding:"7px 14px"}} onClick={startNew}>＋ 新規</button>}
           {sub==="new"&&<><button className="bg" onClick={goHome}>キャンセル</button><button className="bp" onClick={save}>保存</button></>}
           {sub==="detail"&&<button className="bp" style={{fontSize:12,padding:"7px 12px"}} onClick={()=>{setPrintTarget(selected);setShowPrint(true);}}>📄 PDF</button>}
@@ -768,11 +777,13 @@ function App(){
           <div className="fade">
             <div style={{fontWeight:900,fontSize:20,marginBottom:16}}>設定</div>
 
-            {/* ユーザー招待 */}
+            {/* ユーザー招待（管理者のみ） */}
+            {isAdmin&&(
             <div className="card" style={{padding:20,marginBottom:14}}>
               <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>👥 ユーザー招待</div>
               <InvitePanel user={user}/>
             </div>
+            )}
 
             <div className="card" style={{padding:20,marginBottom:14}}>
               <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🏢 会社情報</div>

@@ -77,7 +77,7 @@ function FlowBar({current,onChange}){
   );
 }
 
-function PrintView({doc,co,onClose}){
+function PrintView({doc,co,tax:TAX,onClose}){
   const sub=calcSub(doc.items),tax=Math.floor(sub*TAX),total=sub+tax;
   const isInv=["請求済","入金済","完了"].includes(doc.flowStatus);
   return (
@@ -311,7 +311,7 @@ function App(){
 
   if(!user)return <LoginScreen/>;
 
-  if(showPrint&&printTarget)return <PrintView doc={printTarget} co={co} onClose={()=>setShowPrint(false)}/>;
+  if(showPrint&&printTarget)return <PrintView doc={printTarget} co={co} tax={TAX} onClose={()=>setShowPrint(false)}/>;
 
   const NAV=[
     {id:"home",label:"案件",svg:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>},

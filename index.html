@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Bebas+Neue&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -24,7 +25,6 @@ input,select,textarea{font-family:inherit;}
 .bp:hover{opacity:.88;}
 .bg{background:#fff;color:#374151;border:1px solid #d1d5db;padding:9px 16px;border-radius:6px;font-weight:500;cursor:pointer;font-size:12px;transition:all .15s;white-space:nowrap;}
 .bg:hover{border-color:#c84b00;color:#c84b00;}
-.bai{background:linear-gradient(135deg,#eff6ff,#dbeafe);color:#1d4ed8;border:1px solid #bfdbfe;padding:9px 14px;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;}
 .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;}
 @media(max-width:700px){.g2{grid-template-columns:1fr!important;}.g4{grid-template-columns:1fr 1fr!important;}.mob{overflow-x:auto;}}
 @media print{.np{display:none!important;}body{background:#fff!important;}.card{box-shadow:none!important;}}
@@ -33,7 +33,12 @@ input,select,textarea{font-family:inherit;}
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const {useState} = React;
+const {useState, useEffect} = React;
+
+// Supabase設定
+const SUPABASE_URL = "https://ucsvoqufrdddjqlvjhsp.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjc3ZvcXVmcmRkZGpxbHZqaHNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNTI1NjYsImV4cCI6MjA5NTkyODU2Nn0.aM9Zgb6u48mWyzFw2TL5QYQGnjUAWqtKDAiMpzJfdCg";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const AC = "#c84b00";
 const FLOW_STEPS = ["見積","受注","請求","入金","完了"];
@@ -157,19 +162,104 @@ function PrintView({doc,co,onClose}){
   );
 }
 
+function LoginScreen({onLogin}){
+  const [email,setEmail]=useState("");
+  const [pass,setPass]=useState("");
+  const [isSignup,setIsSignup]=useState(false);
+  const [loading,setLoading]=useState(false);
+  const [err,setErr]=useState("");
+
+  async function handle(){
+    setLoading(true);setErr("");
+    if(isSignup){
+      const {error}=await sb.auth.signUp({email,password:pass});
+      if(error)setErr(error.message);
+      else setErr("確認メールを送りました。メールを確認してください。");
+    }else{
+      const {error}=await sb.auth.signInWithPassword({email,password:pass});
+      if(error)setErr("メールアドレスまたはパスワードが違います");
+    }
+    setLoading(false);
+  }
+
+  return (
+    <div style={{minHeight:"100vh",background:"#f3f4f6",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{width:"100%",maxWidth:380}}>
+        <div style={{textAlign:"center",marginBottom:32}}>
+          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:48,color:"#c84b00",letterSpacing:"0.1em"}}>KAITAI PRO</div>
+          <div style={{fontSize:13,color:"#6b7280",marginTop:4}}>解体業専用 請求・見積管理</div>
+        </div>
+        <div className="card" style={{padding:28}}>
+          <div style={{fontWeight:700,fontSize:16,marginBottom:20,color:"#111"}}>{isSignup?"新規アカウント登録":"ログイン"}</div>
+          <div style={{marginBottom:14}}>
+            <label className="lbl">メールアドレス</label>
+            <input className="ifield" type="email" placeholder="example@email.com" value={email} onChange={e=>setEmail(e.target.value)}/>
+          </div>
+          <div style={{marginBottom:20}}>
+            <label className="lbl">パスワード</label>
+            <input className="ifield" type="password" placeholder="6文字以上" value={pass} onChange={e=>setPass(e.target.value)}/>
+          </div>
+          {err&&<div style={{fontSize:12,color:err.includes("確認")?"#16a34a":"#ef4444",marginBottom:14,padding:"8px 12px",background:err.includes("確認")?"#f0fdf4":"#fef2f2",borderRadius:6}}>{err}</div>}
+          <button className="bp" style={{width:"100%",fontSize:15,padding:"13px"}} onClick={handle} disabled={loading}>
+            {loading?"処理中...":(isSignup?"登録する":"ログイン")}
+          </button>
+          <div style={{textAlign:"center",marginTop:16}}>
+            <button onClick={()=>{setIsSignup(!isSignup);setErr("");}} style={{background:"none",border:"none",color:"#c84b00",fontSize:13,cursor:"pointer",textDecoration:"underline"}}>
+              {isSignup?"すでにアカウントをお持ちの方":"新規登録はこちら"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App(){
-  const [docs,setDocs]=useState(SAMPLE);
+  const [user,setUser]=useState(null);
+  const [authLoading,setAuthLoading]=useState(true);
+  const [docs,setDocs]=useState([]);
   const [tab,setTab]=useState("home");
   const [sub,setSub]=useState(null);
   const [selected,setSelected]=useState(null);
   const [form,setForm]=useState(null);
   const [co,setCo]=useState(DEFAULT_CO);
-  const [taxRate,setTaxRate]=useState(10); // 消費税率（%）
+  const [taxRate,setTaxRate]=useState(10);
   const [filter,setFilter]=useState("ALL");
   const [showPrint,setShowPrint]=useState(false);
   const [printTarget,setPrintTarget]=useState(null);
+  const [dbLoading,setDbLoading]=useState(false);
 
   const TAX = taxRate / 100;
+
+  // 認証状態を監視
+  useEffect(()=>{
+    sb.auth.getSession().then(({data:{session}})=>{
+      setUser(session?.user||null);
+      setAuthLoading(false);
+    });
+    const {data:{subscription}}=sb.auth.onAuthStateChange((_,session)=>{
+      setUser(session?.user||null);
+    });
+    return ()=>subscription.unsubscribe();
+  },[]);
+
+  // ログイン後にデータを読み込む
+  useEffect(()=>{
+    if(user) loadDocs();
+  },[user]);
+
+  async function loadDocs(){
+    setDbLoading(true);
+    const {data,error}=await sb.from("documents").select("*").order("created_at",{ascending:false});
+    if(!error&&data) setDocs(data.map(d=>({...d,...(typeof d.data==="string"?JSON.parse(d.data):d.data)})));
+    setDbLoading(false);
+  }
+
+  async function logout(){
+    await sb.auth.signOut();
+    setDocs([]);
+    goHome();
+  }
 
   function goHome(){setTab("home");setSub(null);setForm(null);setSelected(null);}
 
@@ -179,15 +269,29 @@ function App(){
     setSub("new");setTab("home");
   }
 
-  function save(){
+  async function save(){
     if(!form.client.name||!form.site)return alert("取引先名と工事概要を入力してください");
-    setDocs(p=>[{...form,id:Date.now()},...p]);
+    const docData={no:form.no,created_at:form.createdAt,due_date:form.dueDate,flow_status:form.flowStatus,data:JSON.stringify(form),user_id:user.id};
+    const {data,error}=await sb.from("documents").insert(docData).select().single();
+    if(error){alert("保存に失敗しました");return;}
+    setDocs(p=>[{...form,id:data.id},...p]);
     goHome();
   }
 
-  function updateFlow(id,status){
-    setDocs(p=>p.map(d=>d.id===id?{...d,flowStatus:status}:d));
+  async function updateFlow(id,status){
+    setDocs(p=>p.map(d=>d.id===id?{...d,flowStatus:status,flow_status:status}:d));
     if(selected?.id===id)setSelected(s=>({...s,flowStatus:status}));
+    const doc=docs.find(d=>d.id===id);
+    if(doc){
+      const updated={...doc,flowStatus:status};
+      await sb.from("documents").update({flow_status:status,data:JSON.stringify(updated)}).eq("id",id);
+    }
+  }
+
+  async function deleteDoc(id){
+    await sb.from("documents").delete().eq("id",id);
+    setDocs(p=>p.filter(d=>d.id!==id));
+    goHome();
   }
 
   const subTotal=form?calcSub(form.items):0;
@@ -202,6 +306,10 @@ function App(){
   };
 
   const filtered=filter==="ALL"?docs:docs.filter(d=>d.flowStatus===filter);
+
+  if(authLoading)return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f3f4f6"}}><div style={{color:"#c84b00",fontFamily:"'Bebas Neue',sans-serif",fontSize:32,letterSpacing:"0.1em"}}>読み込み中...</div></div>;
+
+  if(!user)return <LoginScreen/>;
 
   if(showPrint&&printTarget)return <PrintView doc={printTarget} co={co} onClose={()=>setShowPrint(false)}/>;
 
@@ -225,6 +333,7 @@ function App(){
           {!sub&&tab==="home"&&<button className="bp" style={{fontSize:12,padding:"7px 14px"}} onClick={startNew}>＋ 新規</button>}
           {sub==="new"&&<><button className="bg" onClick={goHome}>キャンセル</button><button className="bp" onClick={save}>保存</button></>}
           {sub==="detail"&&<button className="bp" style={{fontSize:12,padding:"7px 12px"}} onClick={()=>{setPrintTarget(selected);setShowPrint(true);}}>📄 PDF</button>}
+          {!sub&&<button className="bg" style={{fontSize:11,padding:"5px 10px",color:"#9ca3af"}} onClick={logout}>ログアウト</button>}
         </div>
       </div>
 
@@ -233,6 +342,7 @@ function App(){
         {/* 案件一覧 */}
         {!sub&&tab==="home"&&(
           <div className="fade">
+            {dbLoading&&<div style={{textAlign:"center",padding:20,color:"#9ca3af",fontSize:13}}>読み込み中...</div>}
             <div className="g4" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
               {[
                 {l:"入金済",v:yen(summary.paid),c:"#16a34a",bg:"#f0fdf4"},
@@ -253,7 +363,7 @@ function App(){
                 </button>
               ))}
             </div>
-            {filtered.length===0&&(
+            {filtered.length===0&&!dbLoading&&(
               <div style={{textAlign:"center",padding:"48px 20px",color:"#9ca3af",fontSize:13}}>
                 <div style={{fontSize:40,marginBottom:10}}>🏗</div>
                 案件がありません<br/>
@@ -417,7 +527,7 @@ function App(){
               {selected.memo&&<div className="card" style={{padding:12,fontSize:12,marginBottom:12,color:"#6b7280"}}><span style={{fontSize:9,color:AC,letterSpacing:"0.1em",textTransform:"uppercase",fontWeight:700}}>備考：</span><span style={{marginLeft:8}}>{selected.memo}</span></div>}
               <div style={{display:"flex",gap:10,marginTop:4}}>
                 <button className="bp" style={{flex:1,fontSize:14,padding:"13px"}} onClick={()=>{setPrintTarget(selected);setShowPrint(true);}}>📄 PDF出力</button>
-                <button className="bg" style={{color:"#ef4444",borderColor:"#fecaca"}} onClick={()=>{setDocs(p=>p.filter(d=>d.id!==selected.id));goHome();}}>削除</button>
+                <button className="bg" style={{color:"#ef4444",borderColor:"#fecaca"}} onClick={()=>deleteDoc(selected.id)}>削除</button>
               </div>
             </div>
           );

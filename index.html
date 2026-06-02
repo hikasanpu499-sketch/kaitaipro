@@ -78,85 +78,121 @@ function FlowBar({current,onChange}){
 }
 
 function PrintView({doc,co,tax:TAX,onClose}){
-  const sub=calcSub(doc.items),tax=Math.floor(sub*TAX),total=sub+tax;
+  const sub=calcSub(doc.items),taxAmt=Math.floor(sub*TAX),total=sub+taxAmt;
   const isInv=["請求済","入金済","完了"].includes(doc.flowStatus);
+
+  function openPrint(){
+    const html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>${isInv?"請求書":"見積書"} - ${doc.client.name}</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet"/>
+<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Noto Sans JP',sans-serif;font-size:13px;color:#111;padding:40px;max-width:794px;margin:0 auto;}
+.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #c84b00;padding-bottom:16px;margin-bottom:24px;}
+.brand{font-size:28px;font-weight:900;color:#c84b00;letter-spacing:0.08em;}
+.doc-type{font-size:18px;font-weight:700;margin-top:4px;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px;}
+.info-box{background:#fafafa;padding:14px;border:1px solid #e5e7eb;}
+.label{font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;}
+.site-box{background:#fafafa;padding:10px 14px;margin-bottom:20px;}
+.total-box{text-align:center;padding:14px;border:2px solid #c84b00;margin-bottom:20px;}
+.total-amount{font-size:32px;font-weight:900;color:#c84b00;}
+table{width:100%;border-collapse:collapse;margin-bottom:16px;}
+th{background:#c84b00;color:#fff;padding:8px 10px;font-size:11px;}
+td{padding:8px 10px;border-bottom:1px solid #f3f4f6;}
+.tr-even{background:#fafafa;}
+.subtotal-table{float:right;min-width:260px;}
+.subtotal-table td{padding:4px 14px;}
+.total-row td{border-top:2px solid #c84b00;padding:10px 14px;font-weight:700;}
+.bank-box{background:#fafafa;border:1px solid #e5e7eb;padding:12px 14px;margin-bottom:16px;}
+.footer{margin-top:32px;padding-top:12px;border-top:1px solid #f3f4f6;font-size:10px;color:#d1d5db;text-align:center;}
+@media print{button{display:none!important;}}
+</style></head><body>
+<div style="text-align:right;margin-bottom:16px;"><button onclick="window.print()" style="background:#c84b00;color:#fff;border:none;padding:10px 20px;font-size:14px;font-weight:700;border-radius:4px;cursor:pointer;">🖨 印刷 / PDF保存</button></div>
+<div class="header">
+  <div><div class="brand">KAITAI PRO</div><div class="doc-type">${isInv?"請求書":"見積書"}</div></div>
+  <div style="text-align:right;font-size:11px;color:#6b7280;line-height:2;">
+    <div>書類番号: ${doc.no}</div><div>発行日: ${doc.createdAt}</div>
+    ${isInv?`<div style="color:#c84b00;font-weight:700;">支払期限: ${doc.dueDate}</div>`:""}
+  </div>
+</div>
+<div class="info-grid">
+  <div>
+    <div class="label">発行元</div>
+    <div style="font-weight:700;font-size:14px;">${co.name}</div>
+    <div style="font-size:11px;color:#6b7280;margin-top:4px;line-height:1.9;">〒${co.zipcode} ${co.address}<br/>TEL: ${co.tel}<br/><span style="color:#c84b00;">登録番号: ${co.invoiceNo}</span></div>
+  </div>
+  <div class="info-box">
+    <div class="label">${isInv?"請求先":"見積先"}</div>
+    <div style="font-weight:700;font-size:15px;">${doc.client.name} 御中</div>
+    <div style="font-size:11px;color:#6b7280;margin-top:4px;line-height:1.9;">${doc.client.person} 様<br/>${doc.client.address}<br/>TEL: ${doc.client.tel}</div>
+  </div>
+</div>
+<div class="site-box"><span style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-right:10px;">件名</span><span style="font-weight:600;">${doc.site}</span></div>
+<div class="total-box">
+  <div style="font-size:11px;color:#9ca3af;margin-bottom:4px;">${isInv?"ご請求金額（税込）":"お見積金額（税込）"}</div>
+  <div class="total-amount">¥${total.toLocaleString("ja-JP")}</div>
+</div>
+<table>
+  <thead><tr>${["工事種別","内容","数量","単位","単価","金額"].map(h=>`<th style="text-align:${["金額","単価","数量"].includes(h)?"right":"left"}">${h}</th>`).join("")}</tr></thead>
+  <tbody>${doc.items.map((item,i)=>{const amt=(Number(item.qty)||0)*(Number(item.unitPrice)||0);return`<tr class="${i%2===0?"":"tr-even"}"><td style="color:#c84b00;font-size:11px;">${item.category}</td><td>${item.description}</td><td style="text-align:right;">${item.qty}</td><td>${item.unit}</td><td style="text-align:right;">¥${Number(item.unitPrice).toLocaleString("ja-JP")}</td><td style="text-align:right;font-weight:700;">¥${amt.toLocaleString("ja-JP")}</td></tr>`;}).join("")}</tbody>
+</table>
+<div style="overflow:hidden;margin-bottom:20px;">
+  <table class="subtotal-table">
+    <tr><td style="color:#9ca3af;text-align:right;">小計</td><td style="text-align:right;">¥${sub.toLocaleString("ja-JP")}</td></tr>
+    <tr><td style="color:#9ca3af;text-align:right;">消費税（${Math.round(TAX*100)}%）</td><td style="text-align:right;">¥${taxAmt.toLocaleString("ja-JP")}</td></tr>
+    <tr class="total-row"><td style="color:#c84b00;text-align:right;">合計（税込）</td><td style="text-align:right;font-size:18px;">¥${total.toLocaleString("ja-JP")}</td></tr>
+  </table>
+</div>
+${isInv?`<div class="bank-box"><div class="label">お振込先</div><div style="line-height:2;">${co.bankName} ${co.bankBranch}　${co.bankType}　${co.bankNo}<br/>口座名義: ${co.bankHolder}</div></div>`:""}
+${doc.memo?`<div style="font-size:12px;color:#6b7280;border-top:1px solid #f3f4f6;padding-top:12px;"><span style="font-size:9px;color:#9ca3af;text-transform:uppercase;margin-right:10px;">備考</span>${doc.memo}</div>`:""}
+<div class="footer">${co.name}　〒${co.zipcode} ${co.address}　TEL: ${co.tel}　登録番号: ${co.invoiceNo}</div>
+</body></html>`;
+    const blob=new Blob([html],{type:"text/html;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    window.open(url,"_blank");
+  }
+
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",zIndex:2000,overflow:"auto",display:"flex",flexDirection:"column"}}>
-      <div className="np" style={{padding:"12px 20px",display:"flex",gap:10,alignItems:"center",background:"#fff",borderBottom:"1px solid #e5e7eb",position:"sticky",top:0}}>
-        <button className="bp" onClick={()=>window.print()}>📄 PDFとして保存</button>
+    <div style={{position:"fixed",inset:0,background:"#f3f4f6",zIndex:2000,overflow:"auto",display:"flex",flexDirection:"column"}}>
+      <div style={{padding:"12px 16px",display:"flex",gap:10,alignItems:"center",background:"#fff",borderBottom:"1px solid #e5e7eb",position:"sticky",top:0}}>
+        <button className="bp" onClick={openPrint}>📄 PDF出力画面を開く</button>
         <button className="bg" onClick={onClose}>✕ 閉じる</button>
-        <span style={{fontSize:11,color:"#9ca3af"}}>印刷→「PDFに保存」を選択</span>
       </div>
-      <div style={{background:"#fff",color:"#111",maxWidth:794,margin:"20px auto",padding:"44px 52px",fontFamily:"'Noto Sans JP',sans-serif",fontSize:13,lineHeight:1.7,minHeight:1100}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:28,borderBottom:`3px solid ${AC}`,paddingBottom:18}}>
-          <div>
-            <div style={{fontSize:28,fontWeight:900,color:AC,letterSpacing:"0.08em",fontFamily:"'Bebas Neue',sans-serif"}}>KAITAI PRO</div>
-            <div style={{fontSize:18,fontWeight:700,color:"#111",marginTop:2}}>{isInv?"請求書":"見積書"}</div>
+      <div style={{padding:16,maxWidth:680,margin:"0 auto",width:"100%"}}>
+        <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"14px 16px",marginBottom:16,fontSize:13,color:"#92400e",lineHeight:1.8}}>
+          📌 <strong>PDF保存の手順</strong><br/>
+          ① 「PDF出力画面を開く」をタップ<br/>
+          ② 新しい画面の「🖨 印刷/PDF保存」をタップ<br/>
+          ③ 共有ボタン→「プリント」→ PDF保存
+        </div>
+        {/* プレビュー */}
+        <div style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,padding:20}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",borderBottom:"3px solid #c84b00",paddingBottom:14,marginBottom:20}}>
+            <div>
+              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#c84b00",letterSpacing:"0.08em"}}>KAITAI PRO</div>
+              <div style={{fontSize:15,fontWeight:700}}>{isInv?"請求書":"見積書"}</div>
+            </div>
+            <div style={{textAlign:"right",fontSize:11,color:"#6b7280",lineHeight:2}}>
+              <div>{doc.no}</div><div>{doc.createdAt}</div>
+            </div>
           </div>
-          <div style={{textAlign:"right",fontSize:11,color:"#6b7280",lineHeight:2}}>
-            <div>書類番号: {doc.no}</div>
-            <div>発行日: {doc.createdAt}</div>
-            {isInv&&<div style={{color:AC,fontWeight:700}}>支払期限: {doc.dueDate}</div>}
+          <div style={{textAlign:"center",padding:"14px",border:"2px solid #c84b00",borderRadius:6,marginBottom:16}}>
+            <div style={{fontSize:10,color:"#9ca3af",marginBottom:4}}>{isInv?"ご請求金額（税込）":"お見積金額（税込）"}</div>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:32,color:"#c84b00"}}>¥{total.toLocaleString("ja-JP")}</div>
+          </div>
+          <div style={{fontSize:13,color:"#374151",marginBottom:8}}><strong>{doc.client.name}</strong> 御中　{doc.client.person} 様</div>
+          <div style={{fontSize:12,color:"#6b7280",marginBottom:16}}>{doc.site}</div>
+          {doc.items.map((item,i)=>{
+            const amt=(Number(item.qty)||0)*(Number(item.unitPrice)||0);
+            return <div key={item.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #f3f4f6",fontSize:12}}>
+              <span style={{color:"#c84b00",minWidth:80}}>{item.category}</span>
+              <span style={{flex:1,marginLeft:8,color:"#374151"}}>{item.description}</span>
+              <span style={{fontWeight:700}}>¥{amt.toLocaleString("ja-JP")}</span>
+            </div>;
+          })}
+          <div style={{textAlign:"right",marginTop:12,paddingTop:12,borderTop:"2px solid #c84b00"}}>
+            <span style={{fontSize:12,color:"#c84b00",fontWeight:700}}>合計（税込）　</span>
+            <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#111"}}>¥{total.toLocaleString("ja-JP")}</span>
           </div>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:28,marginBottom:24}}>
-          <div>
-            <div style={{fontSize:10,color:"#9ca3af",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>発行元</div>
-            <div style={{fontWeight:700,fontSize:14}}>{co.name}</div>
-            <div style={{fontSize:11,color:"#6b7280",marginTop:4,lineHeight:1.9}}>〒{co.zipcode} {co.address}<br/>TEL: {co.tel}<br/><span style={{color:AC}}>登録番号: {co.invoiceNo}</span></div>
-          </div>
-          <div style={{background:"#fafafa",padding:"14px 16px",borderRadius:6,border:"1px solid #e5e7eb"}}>
-            <div style={{fontSize:10,color:"#9ca3af",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>{isInv?"請求先":"見積先"}</div>
-            <div style={{fontWeight:700,fontSize:15}}>{doc.client.name} 御中</div>
-            <div style={{fontSize:11,color:"#6b7280",marginTop:4,lineHeight:1.9}}>{doc.client.person} 様<br/>{doc.client.address}<br/>TEL: {doc.client.tel}</div>
-          </div>
-        </div>
-        <div style={{background:"#fafafa",padding:"10px 14px",borderRadius:4,marginBottom:20,fontSize:13}}>
-          <span style={{fontSize:10,color:"#9ca3af",letterSpacing:"0.1em",textTransform:"uppercase",marginRight:10}}>件名</span>
-          <span style={{fontWeight:600}}>{doc.site}</span>
-        </div>
-        <div style={{textAlign:"center",margin:"0 0 22px",padding:"14px",border:`2px solid ${AC}`,borderRadius:6}}>
-          <div style={{fontSize:11,color:"#9ca3af",marginBottom:4}}>{isInv?"ご請求金額（税込）":"お見積金額（税込）"}</div>
-          <div style={{fontSize:34,fontWeight:900,color:AC,fontFamily:"'Bebas Neue',sans-serif"}}>{yen(total)}</div>
-        </div>
-        <table style={{width:"100%",borderCollapse:"collapse",marginBottom:18,fontSize:12}}>
-          <thead>
-            <tr style={{background:AC,color:"#fff"}}>
-              {["工事種別","内容","数量","単位","単価","金額"].map(h=>(
-                <th key={h} style={{padding:"8px 10px",textAlign:["金額","単価","数量"].includes(h)?"right":"left",fontWeight:700,fontSize:11}}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {doc.items.map((item,i)=>{
-              const amt=(Number(item.qty)||0)*(Number(item.unitPrice)||0);
-              return (
-                <tr key={item.id} style={{background:i%2===0?"#fff":"#fafafa",borderBottom:"1px solid #f3f4f6"}}>
-                  <td style={{padding:"8px 10px",color:AC,fontSize:11}}>{item.category}</td>
-                  <td style={{padding:"8px 10px"}}>{item.description}</td>
-                  <td style={{padding:"8px 10px",textAlign:"right"}}>{item.qty}</td>
-                  <td style={{padding:"8px 10px"}}>{item.unit}</td>
-                  <td style={{padding:"8px 10px",textAlign:"right"}}>{yen(item.unitPrice)}</td>
-                  <td style={{padding:"8px 10px",textAlign:"right",fontWeight:700}}>{yen(amt)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:20}}>
-          <table style={{fontSize:13,minWidth:260}}>
-            {[["小計",yen(sub)],["消費税（10%）",yen(tax)]].map(([l,v])=>(
-              <tr key={l}><td style={{padding:"4px 14px",color:"#9ca3af",textAlign:"right"}}>{l}</td><td style={{padding:"4px 14px",textAlign:"right"}}>{v}</td></tr>
-            ))}
-            <tr style={{borderTop:`2px solid ${AC}`}}>
-              <td style={{padding:"10px 14px",fontWeight:700,color:AC,textAlign:"right",fontSize:14}}>合計（税込）</td>
-              <td style={{padding:"10px 14px",fontWeight:900,fontSize:18,textAlign:"right"}}>{yen(total)}</td>
-            </tr>
-          </table>
-        </div>
-        {isInv&&<div style={{background:"#fafafa",border:"1px solid #e5e7eb",borderRadius:4,padding:"12px 14px",marginBottom:18,fontSize:12}}><div style={{fontSize:10,color:"#9ca3af",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>お振込先</div><div style={{lineHeight:2}}>{co.bankName} {co.bankBranch}　{co.bankType}　{co.bankNo}<br/>口座名義: {co.bankHolder}</div></div>}
-        {doc.memo&&<div style={{fontSize:12,color:"#6b7280",borderTop:"1px solid #f3f4f6",paddingTop:12}}><span style={{fontSize:10,color:"#9ca3af",letterSpacing:"0.1em",textTransform:"uppercase",marginRight:10}}>備考</span>{doc.memo}</div>}
-        <div style={{marginTop:36,paddingTop:14,borderTop:"1px solid #f3f4f6",fontSize:10,color:"#d1d5db",textAlign:"center"}}>{co.name}　〒{co.zipcode} {co.address}　TEL: {co.tel}　登録番号: {co.invoiceNo}</div>
       </div>
     </div>
   );

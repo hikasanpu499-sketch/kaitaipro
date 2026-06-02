@@ -90,7 +90,7 @@ function PrintView({doc,co,tax:TAX,onClose}){
 .doc-type{font-size:28px;font-weight:500;color:#111;margin-top:4px;}
 .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px;}
 .info-box{background:#fafafa;padding:14px;border:1px solid #e5e7eb;}
-.label{font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;}
+.label{font-size:9px;color:#374151;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;}
 .site-box{background:#fafafa;padding:10px 14px;margin-bottom:20px;}
 .total-box{text-align:center;padding:14px;border:2px solid #374151;margin-bottom:20px;}
 .total-amount{font-size:32px;font-weight:900;color:#374151;}
@@ -125,9 +125,9 @@ td{padding:8px 10px;border-bottom:1px solid #f3f4f6;}
     <div style="font-size:11px;color:#6b7280;margin-top:4px;line-height:1.9;">${doc.client.person} 様<br/>${doc.client.address}<br/>TEL: ${doc.client.tel}</div>
   </div>
 </div>
-<div class="site-box"><span style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;margin-right:10px;">件名</span><span style="font-weight:600;">${doc.site}</span></div>
+<div class="site-box"><span style="font-size:9px;color:#374151;text-transform:uppercase;letter-spacing:0.1em;margin-right:10px;">件名</span><span style="font-weight:600;">${doc.site}</span></div>
 <div class="total-box">
-  <div style="font-size:11px;color:#9ca3af;margin-bottom:4px;">${isInv?"ご請求金額（税込）":"お見積金額（税込）"}</div>
+  <div style="font-size:10px;color:#9ca3af;margin-bottom:4px;">${isInv?"ご請求金額（税込）":"お見積金額（税込）"}</div>
   <div class="total-amount">¥${total.toLocaleString("ja-JP")}</div>
 </div>
 <table>
@@ -136,13 +136,13 @@ td{padding:8px 10px;border-bottom:1px solid #f3f4f6;}
 </table>
 <div style="overflow:hidden;margin-bottom:20px;">
   <table class="subtotal-table">
-    <tr><td style="color:#9ca3af;text-align:right;">小計</td><td style="text-align:right;">¥${sub.toLocaleString("ja-JP")}</td></tr>
-    <tr><td style="color:#9ca3af;text-align:right;">消費税（${Math.round(TAX*100)}%）</td><td style="text-align:right;">¥${taxAmt.toLocaleString("ja-JP")}</td></tr>
+    <tr><td style="color:#374151;text-align:right;">小計</td><td style="text-align:right;">¥${sub.toLocaleString("ja-JP")}</td></tr>
+    <tr><td style="color:#374151;text-align:right;">消費税（${Math.round(TAX*100)}%）</td><td style="text-align:right;">¥${taxAmt.toLocaleString("ja-JP")}</td></tr>
     <tr class="total-row"><td style="color:#374151;text-align:right;">合計（税込）</td><td style="text-align:right;font-size:18px;">¥${total.toLocaleString("ja-JP")}</td></tr>
   </table>
 </div>
 ${isInv?`<div class="bank-box"><div class="label">お振込先</div><div style="line-height:2;">${co.bankName} ${co.bankBranch}　${co.bankType}　${co.bankNo}<br/>口座名義: ${co.bankHolder}</div></div>`:""}
-${doc.memo?`<div style="font-size:12px;color:#6b7280;border-top:1px solid #f3f4f6;padding-top:12px;"><span style="font-size:9px;color:#9ca3af;text-transform:uppercase;margin-right:10px;">備考</span>${doc.memo}</div>`:""}
+${doc.memo?`<div style="font-size:12px;color:#374151;border-top:1px solid #f3f4f6;padding-top:12px;"><span style="font-size:9px;color:#374151;text-transform:uppercase;margin-right:10px;">備考</span>${doc.memo}</div>`:""}
 <div class="footer">${co.name}　〒${co.zipcode} ${co.address}　TEL: ${co.tel}　登録番号: ${co.invoiceNo}</div>
 </body></html>`;
     const blob=new Blob([html],{type:"text/html;charset=utf-8"});

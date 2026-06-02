@@ -204,49 +204,34 @@ function InvitePanel({user}){
   const [loading,setLoading]=useState(false);
   const [msg,setMsg]=useState("");
   const [members,setMembers]=useState([]);
+  const [showInvite,setShowInvite]=useState(false);
 
   useEffect(()=>{ loadMembers(); },[]);
 
   async function loadMembers(){
-    const {data}=await sb.from("members").select("*");
+    const {data}=await sb.from("members").select("*").order("id",{ascending:true});
     if(data) setMembers(data);
   }
 
   async function invite(){
     if(!email) return alert("メールアドレスを入力してください");
     setLoading(true); setMsg("");
-    try{
-      // Supabase Authで招待メール送信
-      const {error}=await sb.auth.admin?.inviteUserByEmail
-        ? await sb.auth.admin.inviteUserByEmail(email)
-        : {error:null};
-
-      // membersテーブルに記録
-      const {error:dbErr}=await sb.from("members").insert({
-        email, role, invited_by:user.email
-      });
-
-      if(dbErr) throw dbErr;
-      setMsg(`✅ ${email} に招待メールを送りました`);
-      setEmail("");
-      loadMembers();
-    }catch(e){
-      // 招待メールはSupabase管理画面から送る方法を案内
-      const {error:dbErr}=await sb.from("members").insert({
-        email, role, invited_by:user.email
-      });
-      if(!dbErr){
-        setMsg(`✅ ${email} を登録しました。本人に「${window.location.origin}」から新規登録するよう伝えてください。`);
-        setEmail("");
-        loadMembers();
-      } else {
-        setMsg("❌ 登録に失敗しました");
-      }
+    const {error}=await sb.from("members").insert({email,role,invited_by:user.email});
+    if(error){ setMsg("❌ 登録に失敗しました（既に登録済みの可能性）"); }
+    else {
+      setMsg(`✅ ${email} を登録しました。本人に「${window.location.origin}」から新規登録するよう伝えてください。`);
+      setEmail(""); setShowInvite(false); loadMembers();
     }
     setLoading(false);
   }
 
-  async function removeMember(id){
+  async function changeRole(id, newRole){
+    await sb.from("members").update({role:newRole}).eq("id",id);
+    loadMembers();
+  }
+
+  async function removeMember(id, memberEmail){
+    if(!confirm(`${memberEmail} を削除しますか？`)) return;
     await sb.from("members").delete().eq("id",id);
     loadMembers();
   }
@@ -256,41 +241,60 @@ function InvitePanel({user}){
 
   return (
     <div>
+      {/* メンバー一覧 */}
       <div style={{marginBottom:14}}>
-        <label className="lbl">招待するメールアドレス</label>
-        <input className="ifield" type="email" placeholder="example@email.com" value={email} onChange={e=>setEmail(e.target.value)} style={{marginBottom:10}}/>
-        <label className="lbl">権限</label>
-        <div style={{display:"flex",gap:8,marginBottom:12}}>
-          {[{v:"staff",l:"スタッフ"},{v:"admin",l:"管理者"}].map(r=>(
-            <button key={r.v} onClick={()=>setRole(r.v)}
-              style={{flex:1,background:role===r.v?AC:"#f3f4f6",color:role===r.v?"#fff":"#374151",border:"none",padding:"8px",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>
-              {r.l}
-            </button>
-          ))}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+          <div style={{fontSize:12,color:"#6b7280",fontWeight:700}}>メンバー一覧 ({members.length}人)</div>
+          <button className="bp" style={{fontSize:12,padding:"6px 12px"}} onClick={()=>setShowInvite(!showInvite)}>
+            {showInvite?"✕ 閉じる":"＋ 招待する"}
+          </button>
         </div>
-        <button className="bp" style={{width:"100%"}} onClick={invite} disabled={loading}>
-          {loading?"送信中...":"招待する"}
-        </button>
-      </div>
-      {msg&&<div style={{fontSize:12,padding:"8px 12px",background:msg.includes("✅")?"#f0fdf4":"#fef2f2",border:`1px solid ${msg.includes("✅")?"#bbf7d0":"#fecaca"}`,borderRadius:6,marginBottom:14,color:msg.includes("✅")?"#16a34a":"#ef4444",lineHeight:1.6}}>{msg}</div>}
 
-      {members.length>0&&(
-        <div>
-          <div style={{fontSize:11,color:"#6b7280",marginBottom:8,fontWeight:700}}>メンバー一覧</div>
-          {members.map(m=>(
-            <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid #f3f4f6"}}>
-              <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:600,color:"#111"}}>{m.email}</div>
-                <div style={{fontSize:11,color:"#9ca3af"}}>招待者: {m.invited_by}</div>
-              </div>
-              <span style={{background:`${roleColor(m.role)}15`,color:roleColor(m.role),border:`1px solid ${roleColor(m.role)}33`,padding:"2px 10px",borderRadius:999,fontSize:11,fontWeight:700}}>
-                {roleLabel(m.role)}
-              </span>
-              <button onClick={()=>removeMember(m.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:16}}>×</button>
+        {/* 招待フォーム */}
+        {showInvite&&(
+          <div style={{background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:8,padding:16,marginBottom:14}}>
+            <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:12}}>新しいメンバーを招待</div>
+            <label className="lbl">メールアドレス</label>
+            <input className="ifield" type="email" placeholder="example@email.com" value={email} onChange={e=>setEmail(e.target.value)} style={{marginBottom:10}}/>
+            <label className="lbl">権限</label>
+            <div style={{display:"flex",gap:8,marginBottom:12}}>
+              {[{v:"staff",l:"スタッフ"},{v:"admin",l:"管理者"}].map(r=>(
+                <button key={r.v} onClick={()=>setRole(r.v)}
+                  style={{flex:1,background:role===r.v?AC:"#fff",color:role===r.v?"#fff":"#374151",border:`1.5px solid ${role===r.v?AC:"#d1d5db"}`,padding:"8px",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+                  {r.l}
+                </button>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+            <button className="bp" style={{width:"100%"}} onClick={invite} disabled={loading}>
+              {loading?"送信中...":"招待する"}
+            </button>
+            {msg&&<div style={{fontSize:12,padding:"8px 12px",background:msg.includes("✅")?"#f0fdf4":"#fef2f2",border:`1px solid ${msg.includes("✅")?"#bbf7d0":"#fecaca"}`,borderRadius:6,marginTop:10,color:msg.includes("✅")?"#16a34a":"#ef4444",lineHeight:1.6}}>{msg}</div>}
+          </div>
+        )}
+
+        {/* メンバーリスト */}
+        {members.length===0?(
+          <div style={{textAlign:"center",padding:"20px",color:"#9ca3af",fontSize:13}}>まだメンバーがいません</div>
+        ):(
+          members.map(m=>(
+            <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 0",borderBottom:"1px solid #f3f4f6"}}>
+              <div style={{width:36,height:36,borderRadius:"50%",background:`${roleColor(m.role)}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>
+                {m.role==="admin"?"👑":"👤"}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:600,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.email}</div>
+                <div style={{fontSize:10,color:"#9ca3af",marginTop:1}}>招待者: {m.invited_by}</div>
+              </div>
+              <select value={m.role} onChange={e=>changeRole(m.id,e.target.value)}
+                style={{background:`${roleColor(m.role)}10`,color:roleColor(m.role),border:`1px solid ${roleColor(m.role)}33`,padding:"4px 8px",borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",outline:"none"}}>
+                <option value="staff">スタッフ</option>
+                <option value="admin">管理者</option>
+              </select>
+              <button onClick={()=>removeMember(m.id,m.email)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:16,padding:"0 4px"}}>×</button>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
@@ -747,6 +751,21 @@ function App(){
                 "消費税率を確認（デフォルト10%）",
                 "「保存する」をタップ",
               ]},
+              {icon:"👥", title:"ユーザーの招待・管理方法（管理者のみ）", color:"#16a34a", steps:[
+                "下メニューの「設定」をタップ",
+                "「ユーザー管理」セクションでメンバー一覧を確認",
+                "「ユーザーを招待する」をタップ",
+                "招待したい人のメールアドレスを入力",
+                "権限を「スタッフ」か「管理者」から選ぶ",
+                "「招待する」をタップ → 相手にURLを共有して新規登録してもらう",
+                "メンバー一覧から権限変更・削除も可能",
+              ]},
+              {icon:"🔐", title:"権限について", color:"#f59e0b", steps:[
+                "管理者：全機能が使える＋ユーザー管理ができる",
+                "スタッフ：案件登録・編集・PDF出力ができる",
+                "ヘッダー右上に自分の権限が表示される",
+                "最初に登録したユーザーが自動的に管理者になる",
+              ]},
             ].map((g,i)=>(
               <div key={i} className="card" style={{marginBottom:10,overflow:"hidden"}}>
                 <div style={{padding:"14px 16px",background:`${g.color}08`,borderBottom:"1px solid #f3f4f6",display:"flex",alignItems:"center",gap:10}}>
@@ -777,10 +796,10 @@ function App(){
           <div className="fade">
             <div style={{fontWeight:900,fontSize:20,marginBottom:16}}>設定</div>
 
-            {/* ユーザー招待（管理者のみ） */}
+            {/* ユーザー管理（管理者のみ） */}
             {isAdmin&&(
             <div className="card" style={{padding:20,marginBottom:14}}>
-              <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>👥 ユーザー招待</div>
+              <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>👥 ユーザー管理</div>
               <InvitePanel user={user}/>
             </div>
             )}

@@ -230,7 +230,7 @@ function InvitePanel({user}){
     setLoading(true); setMsg("");
     const code=generateCode(role);
     const {error}=await sb.from("invite_codes").insert({code,role,used:false,created_by:user.email});
-    if(error){ setMsg("❌ コード発行に失敗しました"); }
+    if(error){ setMsg(`❌ コード発行に失敗しました: ${error.message}`); }
     else {
       setMsg(`✅ 招待コードを発行しました！\n\n🔑 コード：${code}\n👤 権限：${role==="admin"?"管理者":"スタッフ"}\n\n相手に以下を伝えてください：\nURL：${window.location.origin}\nコード：${code}`);
       setShowCodeForm(false); loadCodes();

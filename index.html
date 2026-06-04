@@ -274,13 +274,19 @@ function LoginScreen(){
   async function handleAdminSignup(){
     setLoading(true);setErr("");
     if(!companyName){setErr("会社名を入力してください");setLoading(false);return;}
+    if(!email||!pass){setErr("メールアドレスとパスワードを入力してください");setLoading(false);return;}
+    // 既存の会社チェック
+    const{data:existingCompany}=await sb.from("companies").select("id").eq("owner_email",email).single();
+    if(existingCompany){setErr("このメールアドレスはすでに登録されています");setLoading(false);return;}
+    // 認証アカウント作成
     const{data,error}=await sb.auth.signUp({email,password:pass});
     if(error){setErr(error.message);setLoading(false);return;}
     // 会社を作成
     const{data:company,error:companyErr}=await sb.from("companies").insert({name:companyName,owner_email:email}).select().single();
     if(companyErr){setErr(`会社登録エラー: ${companyErr.message}`);setLoading(false);return;}
-    // 管理者をmembersにも登録（company_idを持たせる）
-    await sb.from("members").insert({email,role:"admin",company_id:company.id,invited_by:email});
+    // 管理者をmembersにも登録
+    const{error:memberErr}=await sb.from("members").insert({email,role:"admin",company_id:company.id,invited_by:email});
+    if(memberErr){setErr(`メンバー登録エラー: ${memberErr.message}`);setLoading(false);return;}
     setErr("✅ 登録完了！ログインしてください。");
     setLoading(false);
   }

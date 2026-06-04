@@ -214,7 +214,7 @@ function InvitePanel({user}){
   }
 
   async function loadCodes(){
-    const {data}=await sb.from("invite_codes").select("*").eq("used",false).order("id",{ascending:false});
+    const {data}=await sb.from("invite_codes").select("*").order("id",{ascending:false});
     if(data) setCodes(data);
   }
 
@@ -279,7 +279,7 @@ function InvitePanel({user}){
         )}
         {codes.length>0&&(
           <div>
-            <div style={{fontSize:11,color:"#9ca3af",marginBottom:8}}>未使用の招待コード</div>
+            <div style={{fontSize:11,color:"#9ca3af",marginBottom:8}}>発行済みの招待コード</div>
             {codes.map(c=>(
               <div key={c.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:6,marginBottom:6}}>
                 <span style={{fontFamily:"monospace",fontSize:14,fontWeight:900,color:"#111",letterSpacing:"0.1em",flex:1}}>{c.code}</span>
@@ -359,8 +359,8 @@ function LoginScreen(){
     // membersテーブルに登録
     await sb.from("members").insert({email,role:codeData.role,invited_by:codeData.created_by});
 
-    // コードを使用済みに
-    await sb.from("invite_codes").update({used:true}).eq("code",code.toUpperCase());
+    // コードを使用済みにしない（何度でも使える）
+    // await sb.from("invite_codes").update({used:true}).eq("code",code.toUpperCase());
 
     setErr("✅ 登録完了！確認メールを確認してからログインしてください。");
     setLoading(false);

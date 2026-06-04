@@ -480,9 +480,15 @@ function App(){
     if(companyId) settings.company_id=companyId;
     let query=sb.from("company_settings").select("id").limit(1);
     if(companyId) query=query.eq("company_id",companyId);
-    const{data:existing}=await query.single();
-    if(existing)await sb.from("company_settings").update(settings).eq("id",existing.id);
-    else await sb.from("company_settings").insert(settings);
+    const{data:existing,error:selErr}=await query.single();
+    if(selErr&&selErr.code!=="PGRST116"){alert("❌ 検索エラー: "+selErr.message);return;}
+    if(existing){
+      const{error:updErr}=await sb.from("company_settings").update(settings).eq("id",existing.id);
+      if(updErr){alert("❌ 更新エラー: "+updErr.message);return;}
+    }else{
+      const{error:insErr}=await sb.from("company_settings").insert(settings);
+      if(insErr){alert("❌ 保存エラー: "+insErr.message);return;}
+    }
     alert("✅ 保存しました！");
   }
 

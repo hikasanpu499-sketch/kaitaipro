@@ -199,93 +199,113 @@ ${doc.memo?`<div style="font-size:12px;color:#374151;border-top:1px solid #f3f4f
 }
 
 function InvitePanel({user}){
-  const [email,setEmail]=useState("");
   const [role,setRole]=useState("staff");
   const [loading,setLoading]=useState(false);
   const [msg,setMsg]=useState("");
   const [members,setMembers]=useState([]);
-  const [showInvite,setShowInvite]=useState(false);
+  const [codes,setCodes]=useState([]);
+  const [showCodeForm,setShowCodeForm]=useState(false);
 
-  useEffect(()=>{ loadMembers(); },[]);
+  useEffect(()=>{ loadMembers(); loadCodes(); },[]);
 
   async function loadMembers(){
     const {data}=await sb.from("members").select("*").order("id",{ascending:true});
     if(data) setMembers(data);
   }
 
-  async function invite(){
-    if(!email) return alert("メールアドレスを入力してください");
+  async function loadCodes(){
+    const {data}=await sb.from("invite_codes").select("*").eq("used",false).order("id",{ascending:false});
+    if(data) setCodes(data);
+  }
+
+  function generateCode(r){
+    const prefix=r==="admin"?"ADMIN":"STAFF";
+    const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let c="";
+    for(let i=0;i<6;i++) c+=chars[Math.floor(Math.random()*chars.length)];
+    return `${prefix}-${c}`;
+  }
+
+  async function createCode(){
     setLoading(true); setMsg("");
-    const {error}=await sb.from("members").insert({email,role,invited_by:user.email});
-    if(error){ setMsg(`❌ エラー: ${error.message}`); }
+    const code=generateCode(role);
+    const {error}=await sb.from("invite_codes").insert({code,role,used:false,created_by:user.email});
+    if(error){ setMsg("❌ コード発行に失敗しました"); }
     else {
-      setMsg(`✅ 登録完了！\n\n招待された方に以下を伝えてください：\n\n📧 登録メールアドレス：${email}\n🔗 登録URL：${window.location.origin}\n\n上記URLを開いて「新規登録はこちら」から登録してください。`);
-      setEmail(""); setShowInvite(false); loadMembers();
+      setMsg(`✅ 招待コードを発行しました！\n\n🔑 コード：${code}\n👤 権限：${role==="admin"?"管理者":"スタッフ"}\n\n相手に以下を伝えてください：\nURL：${window.location.origin}\nコード：${code}`);
+      setShowCodeForm(false); loadCodes();
     }
     setLoading(false);
   }
 
-  async function changeRole(id, newRole){
-    await sb.from("members").update({role:newRole}).eq("id",id);
-    loadMembers();
-  }
+  async function deleteCode(id){ await sb.from("invite_codes").delete().eq("id",id); loadCodes(); }
 
-  async function removeMember(id, memberEmail){
+  async function changeRole(id,newRole){ await sb.from("members").update({role:newRole}).eq("id",id); loadMembers(); }
+
+  async function removeMember(id,memberEmail){
     if(!confirm(`${memberEmail} を削除しますか？`)) return;
-    await sb.from("members").delete().eq("id",id);
-    loadMembers();
+    await sb.from("members").delete().eq("id",id); loadMembers();
   }
 
-  const roleLabel = r => r==="admin"?"管理者":"スタッフ";
   const roleColor = r => r==="admin"?"#c84b00":"#3b82f6";
 
   return (
     <div>
-      {/* 招待完了メッセージ */}
       {msg&&<div style={{fontSize:12,padding:"12px 14px",background:msg.includes("✅")?"#f0fdf4":"#fef2f2",border:`1px solid ${msg.includes("✅")?"#bbf7d0":"#fecaca"}`,borderRadius:8,marginBottom:14,color:msg.includes("✅")?"#16a34a":"#ef4444",lineHeight:1.8,whiteSpace:"pre-line"}}>{msg}</div>}
-      {/* メンバー一覧 */}
-      <div style={{marginBottom:14}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-          <div style={{fontSize:12,color:"#6b7280",fontWeight:700}}>メンバー一覧 ({members.length}人)</div>
-          <button className="bp" style={{fontSize:12,padding:"6px 12px"}} onClick={()=>setShowInvite(!showInvite)}>
-            {showInvite?"✕ 閉じる":"＋ 招待する"}
+
+      {/* 招待コード発行 */}
+      <div style={{marginBottom:16}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+          <div style={{fontSize:12,color:"#6b7280",fontWeight:700}}>招待コード</div>
+          <button className="bp" style={{fontSize:12,padding:"6px 12px"}} onClick={()=>setShowCodeForm(!showCodeForm)}>
+            {showCodeForm?"✕ 閉じる":"🔑 コードを発行"}
           </button>
         </div>
-
-        {/* 招待フォーム */}
-        {showInvite&&(
-          <div style={{background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:8,padding:16,marginBottom:14}}>
-            <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:12}}>新しいメンバーを招待</div>
-            <label className="lbl">メールアドレス</label>
-            <input className="ifield" type="email" placeholder="example@email.com" value={email} onChange={e=>setEmail(e.target.value)} style={{marginBottom:10}}/>
+        {showCodeForm&&(
+          <div style={{background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:8,padding:16,marginBottom:12}}>
             <label className="lbl">権限</label>
-            <div style={{display:"flex",gap:8,marginBottom:12}}>
-              {[{v:"staff",l:"スタッフ"},{v:"admin",l:"管理者"}].map(r=>(
+            <div style={{display:"flex",gap:8,marginBottom:14}}>
+              {[{v:"staff",l:"👤 スタッフ"},{v:"admin",l:"👑 管理者"}].map(r=>(
                 <button key={r.v} onClick={()=>setRole(r.v)}
                   style={{flex:1,background:role===r.v?AC:"#fff",color:role===r.v?"#fff":"#374151",border:`1.5px solid ${role===r.v?AC:"#d1d5db"}`,padding:"8px",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>
                   {r.l}
                 </button>
               ))}
             </div>
-            <button className="bp" style={{width:"100%"}} onClick={invite} disabled={loading}>
-              {loading?"送信中...":"招待する"}
+            <button className="bp" style={{width:"100%"}} onClick={createCode} disabled={loading}>
+              {loading?"発行中...":"コードを発行する"}
             </button>
-            {msg&&<div style={{fontSize:12,padding:"12px 14px",background:msg.includes("✅")?"#f0fdf4":"#fef2f2",border:`1px solid ${msg.includes("✅")?"#bbf7d0":"#fecaca"}`,borderRadius:8,marginBottom:14,color:msg.includes("✅")?"#16a34a":"#ef4444",lineHeight:1.8,whiteSpace:"pre-line"}}>{msg}</div>}
           </div>
         )}
+        {codes.length>0&&(
+          <div>
+            <div style={{fontSize:11,color:"#9ca3af",marginBottom:8}}>未使用の招待コード</div>
+            {codes.map(c=>(
+              <div key={c.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:6,marginBottom:6}}>
+                <span style={{fontFamily:"monospace",fontSize:14,fontWeight:900,color:"#111",letterSpacing:"0.1em",flex:1}}>{c.code}</span>
+                <span style={{background:`${roleColor(c.role)}15`,color:roleColor(c.role),border:`1px solid ${roleColor(c.role)}33`,padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700}}>
+                  {c.role==="admin"?"管理者":"スタッフ"}
+                </span>
+                <button onClick={()=>deleteCode(c.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:14}}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-        {/* メンバーリスト */}
+      {/* メンバー一覧 */}
+      <div style={{borderTop:"1px solid #f3f4f6",paddingTop:14}}>
+        <div style={{fontSize:12,color:"#6b7280",fontWeight:700,marginBottom:12}}>メンバー一覧 ({members.length}人)</div>
         {members.length===0?(
-          <div style={{textAlign:"center",padding:"20px",color:"#9ca3af",fontSize:13}}>まだメンバーがいません</div>
+          <div style={{textAlign:"center",padding:"16px",color:"#9ca3af",fontSize:13}}>まだメンバーがいません</div>
         ):(
           members.map(m=>(
-            <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 0",borderBottom:"1px solid #f3f4f6"}}>
-              <div style={{width:36,height:36,borderRadius:"50%",background:`${roleColor(m.role)}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>
+            <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:"1px solid #f3f4f6"}}>
+              <div style={{width:32,height:32,borderRadius:"50%",background:`${roleColor(m.role)}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>
                 {m.role==="admin"?"👑":"👤"}
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:13,fontWeight:600,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.email}</div>
-                <div style={{fontSize:10,color:"#9ca3af",marginTop:1}}>招待者: {m.invited_by}</div>
               </div>
               <select value={m.role} onChange={e=>changeRole(m.id,e.target.value)}
                 style={{background:`${roleColor(m.role)}10`,color:roleColor(m.role),border:`1px solid ${roleColor(m.role)}33`,padding:"4px 8px",borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",outline:"none"}}>
@@ -301,23 +321,48 @@ function InvitePanel({user}){
   );
 }
 
-function LoginScreen({onLogin}){
+function LoginScreen(){
+  const [mode,setMode]=useState("login"); // login | signup_admin | signup_invite
   const [email,setEmail]=useState("");
   const [pass,setPass]=useState("");
-  const [isSignup,setIsSignup]=useState(false);
+  const [code,setCode]=useState("");
   const [loading,setLoading]=useState(false);
   const [err,setErr]=useState("");
 
-  async function handle(){
+  async function handleLogin(){
     setLoading(true);setErr("");
-    if(isSignup){
-      const {error}=await sb.auth.signUp({email,password:pass});
-      if(error)setErr(error.message);
-      else setErr("確認メールを送りました。メールを確認してください。");
-    }else{
-      const {error}=await sb.auth.signInWithPassword({email,password:pass});
-      if(error)setErr("メールアドレスまたはパスワードが違います");
-    }
+    const {error}=await sb.auth.signInWithPassword({email,password:pass});
+    if(error)setErr("メールアドレスまたはパスワードが違います");
+    setLoading(false);
+  }
+
+  async function handleAdminSignup(){
+    setLoading(true);setErr("");
+    const {error}=await sb.auth.signUp({email,password:pass});
+    if(error){setErr(error.message);}
+    else setErr("確認メールを送りました。メールを確認してください。");
+    setLoading(false);
+  }
+
+  async function handleInviteSignup(){
+    setLoading(true);setErr("");
+    if(!code){setErr("招待コードを入力してください");setLoading(false);return;}
+
+    // 招待コードを確認
+    const {data:codeData,error:codeErr}=await sb.from("invite_codes").select("*").eq("code",code.toUpperCase()).eq("used",false).single();
+    if(codeErr||!codeData){setErr("招待コードが無効または使用済みです");setLoading(false);return;}
+
+    // アカウント作成
+    const {error:signupErr}=await sb.auth.signUp({email,password:pass});
+    if(signupErr){setErr(signupErr.message);setLoading(false);return;}
+
+    // membersテーブルに登録
+    await sb.from("members").insert({email,role:codeData.role,invited_by:codeData.created_by});
+
+    // コードを使用済みに
+    await sb.from("invite_codes").update({used:true}).eq("code",code.toUpperCase());
+
+    setErr("✅ 登録完了！確認メールを確認してからログインしてください。");
     setLoading(false);
   }
 
@@ -328,26 +373,83 @@ function LoginScreen({onLogin}){
           <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:48,color:"#c84b00",letterSpacing:"0.1em"}}>KAITAI PRO</div>
           <div style={{fontSize:13,color:"#6b7280",marginTop:4}}>解体業専用 請求・見積管理</div>
         </div>
-        <div className="card" style={{padding:28}}>
-          <div style={{fontWeight:700,fontSize:16,marginBottom:20,color:"#111"}}>{isSignup?"新規アカウント登録":"ログイン"}</div>
-          <div style={{marginBottom:14}}>
-            <label className="lbl">メールアドレス</label>
-            <input className="ifield" type="email" placeholder="example@email.com" value={email} onChange={e=>setEmail(e.target.value)}/>
-          </div>
-          <div style={{marginBottom:20}}>
-            <label className="lbl">パスワード</label>
-            <input className="ifield" type="password" placeholder="6文字以上" value={pass} onChange={e=>setPass(e.target.value)}/>
-          </div>
-          {err&&<div style={{fontSize:12,color:err.includes("確認")?"#16a34a":"#ef4444",marginBottom:14,padding:"8px 12px",background:err.includes("確認")?"#f0fdf4":"#fef2f2",borderRadius:6}}>{err}</div>}
-          <button className="bp" style={{width:"100%",fontSize:15,padding:"13px"}} onClick={handle} disabled={loading}>
-            {loading?"処理中...":(isSignup?"登録する":"ログイン")}
-          </button>
-          <div style={{textAlign:"center",marginTop:16}}>
-            <button onClick={()=>{setIsSignup(!isSignup);setErr("");}} style={{background:"none",border:"none",color:"#c84b00",fontSize:13,cursor:"pointer",textDecoration:"underline"}}>
-              {isSignup?"すでにアカウントをお持ちの方":"新規登録はこちら"}
+
+        {/* ログイン */}
+        {mode==="login"&&(
+          <div className="card" style={{padding:28}}>
+            <div style={{fontWeight:700,fontSize:16,marginBottom:20,color:"#111"}}>ログイン</div>
+            <div style={{marginBottom:12}}>
+              <label className="lbl">メールアドレス</label>
+              <input className="ifield" type="email" placeholder="example@email.com" value={email} onChange={e=>setEmail(e.target.value)}/>
+            </div>
+            <div style={{marginBottom:20}}>
+              <label className="lbl">パスワード</label>
+              <input className="ifield" type="password" placeholder="6文字以上" value={pass} onChange={e=>setPass(e.target.value)}/>
+            </div>
+            {err&&<div style={{fontSize:12,color:"#ef4444",marginBottom:14,padding:"8px 12px",background:"#fef2f2",borderRadius:6}}>{err}</div>}
+            <button className="bp" style={{width:"100%",fontSize:15,padding:"13px"}} onClick={handleLogin} disabled={loading}>
+              {loading?"処理中...":"ログイン"}
             </button>
+            <div style={{marginTop:20,display:"flex",flexDirection:"column",gap:10}}>
+              <button onClick={()=>{setMode("signup_invite");setErr("");}} style={{background:"#f0fdf4",border:"1px solid #bbf7d0",color:"#16a34a",padding:"10px",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+                📨 招待コードで新規登録
+              </button>
+              <button onClick={()=>{setMode("signup_admin");setErr("");}} style={{background:"#f9fafb",border:"1px solid #e5e7eb",color:"#6b7280",padding:"10px",borderRadius:6,fontSize:12,cursor:"pointer"}}>
+                管理者として新規登録
+              </button>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* 招待コードで登録 */}
+        {mode==="signup_invite"&&(
+          <div className="card" style={{padding:28}}>
+            <div style={{fontWeight:700,fontSize:16,marginBottom:6,color:"#111"}}>招待コードで登録</div>
+            <div style={{fontSize:12,color:"#6b7280",marginBottom:20}}>管理者から受け取った招待コードを入力してください</div>
+            <div style={{marginBottom:12}}>
+              <label className="lbl">招待コード</label>
+              <input className="ifield" placeholder="例: STAFF-X7K2" value={code} onChange={e=>setCode(e.target.value)} style={{textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700}}/>
+            </div>
+            <div style={{marginBottom:12}}>
+              <label className="lbl">メールアドレス</label>
+              <input className="ifield" type="email" placeholder="example@email.com" value={email} onChange={e=>setEmail(e.target.value)}/>
+            </div>
+            <div style={{marginBottom:20}}>
+              <label className="lbl">パスワード（6文字以上）</label>
+              <input className="ifield" type="password" placeholder="6文字以上" value={pass} onChange={e=>setPass(e.target.value)}/>
+            </div>
+            {err&&<div style={{fontSize:12,color:err.includes("✅")?"#16a34a":"#ef4444",marginBottom:14,padding:"8px 12px",background:err.includes("✅")?"#f0fdf4":"#fef2f2",borderRadius:6}}>{err}</div>}
+            <button className="bp" style={{width:"100%",fontSize:15,padding:"13px",background:"#16a34a"}} onClick={handleInviteSignup} disabled={loading}>
+              {loading?"処理中...":"登録する"}
+            </button>
+            <div style={{textAlign:"center",marginTop:14}}>
+              <button onClick={()=>{setMode("login");setErr("");}} style={{background:"none",border:"none",color:"#9ca3af",fontSize:12,cursor:"pointer"}}>← ログインに戻る</button>
+            </div>
+          </div>
+        )}
+
+        {/* 管理者登録 */}
+        {mode==="signup_admin"&&(
+          <div className="card" style={{padding:28}}>
+            <div style={{fontWeight:700,fontSize:16,marginBottom:6,color:"#111"}}>管理者として登録</div>
+            <div style={{fontSize:12,color:"#6b7280",marginBottom:20}}>会社の管理者アカウントを作成します</div>
+            <div style={{marginBottom:12}}>
+              <label className="lbl">メールアドレス</label>
+              <input className="ifield" type="email" placeholder="example@email.com" value={email} onChange={e=>setEmail(e.target.value)}/>
+            </div>
+            <div style={{marginBottom:20}}>
+              <label className="lbl">パスワード（6文字以上）</label>
+              <input className="ifield" type="password" placeholder="6文字以上" value={pass} onChange={e=>setPass(e.target.value)}/>
+            </div>
+            {err&&<div style={{fontSize:12,color:err.includes("確認")?"#16a34a":"#ef4444",marginBottom:14,padding:"8px 12px",background:err.includes("確認")?"#f0fdf4":"#fef2f2",borderRadius:6}}>{err}</div>}
+            <button className="bp" style={{width:"100%",fontSize:15,padding:"13px"}} onClick={handleAdminSignup} disabled={loading}>
+              {loading?"処理中...":"管理者登録する"}
+            </button>
+            <div style={{textAlign:"center",marginTop:14}}>
+              <button onClick={()=>{setMode("login");setErr("");}} style={{background:"none",border:"none",color:"#9ca3af",fontSize:12,cursor:"pointer"}}>← ログインに戻る</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

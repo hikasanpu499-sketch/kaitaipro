@@ -494,13 +494,48 @@ function App(){
 
   // ログイン後にデータと権限を読み込む
   useEffect(()=>{
-    if(user){ loadDocs(); loadRole(); }
+    if(user){ loadDocs(); loadRole(); loadSettings(); }
   },[user]);
 
   async function loadRole(){
     const {data}=await sb.from("members").select("role").eq("email",user.email).single();
     if(data) setRole(data.role);
-    else setRole("admin"); // membersに登録がない場合は管理者（最初のユーザー）
+    else setRole("admin");
+  }
+
+  async function loadSettings(){
+    const {data}=await sb.from("company_settings").select("*").limit(1).single();
+    if(data){
+      setCo({
+        name:data.name||DEFAULT_CO.name,
+        zipcode:data.zipcode||DEFAULT_CO.zipcode,
+        address:data.address||DEFAULT_CO.address,
+        tel:data.tel||DEFAULT_CO.tel,
+        invoiceNo:data.invoice_no||DEFAULT_CO.invoiceNo,
+        bankName:data.bank_name||DEFAULT_CO.bankName,
+        bankBranch:data.bank_branch||DEFAULT_CO.bankBranch,
+        bankType:data.bank_type||DEFAULT_CO.bankType,
+        bankNo:data.bank_no||DEFAULT_CO.bankNo,
+        bankHolder:data.bank_holder||DEFAULT_CO.bankHolder,
+      });
+      if(data.tax_rate) setTaxRate(data.tax_rate);
+    }
+  }
+
+  async function saveSettings(){
+    const settings={
+      name:co.name, zipcode:co.zipcode, address:co.address, tel:co.tel,
+      invoice_no:co.invoiceNo, bank_name:co.bankName, bank_branch:co.bankBranch,
+      bank_type:co.bankType, bank_no:co.bankNo, bank_holder:co.bankHolder,
+      tax_rate:taxRate
+    };
+    const {data:existing}=await sb.from("company_settings").select("id").limit(1).single();
+    if(existing){
+      await sb.from("company_settings").update(settings).eq("id",existing.id);
+    }else{
+      await sb.from("company_settings").insert(settings);
+    }
+    alert("✅ 保存しました！");
   }
 
   async function loadDocs(){
@@ -565,6 +600,73 @@ function App(){
   if(authLoading)return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f3f4f6"}}><div style={{color:"#c84b00",fontFamily:"'Bebas Neue',sans-serif",fontSize:32,letterSpacing:"0.1em"}}>読み込み中...</div></div>;
 
   if(!user)return <LoginScreen/>;
+
+  // 管理者で会社名が未設定の場合は初期設定画面を表示
+  if(isAdmin && co.name===DEFAULT_CO.name && !dbLoading) return (
+    <div style={{minHeight:"100vh",background:"#f3f4f6",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{width:"100%",maxWidth:420}}>
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,color:AC,letterSpacing:"0.1em"}}>KAITAI PRO</div>
+          <div style={{fontSize:15,fontWeight:700,color:"#111",marginTop:8}}>🎉 登録完了！</div>
+          <div style={{fontSize:13,color:"#6b7280",marginTop:6}}>まず会社情報を設定してください</div>
+        </div>
+
+        {/* ステップ表示 */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:24}}>
+          {["会社情報","インボイス","振込先"].map((s,i)=>(
+            <div key={s} style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:4}}>
+                <div style={{width:22,height:22,borderRadius:"50%",background:AC,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900}}>{i+1}</div>
+                <span style={{fontSize:11,color:"#374151",fontWeight:600}}>{s}</span>
+              </div>
+              {i<2&&<div style={{width:20,height:1,background:"#d1d5db"}}/>}
+            </div>
+          ))}
+        </div>
+
+        <div className="card" style={{padding:24,marginBottom:14}}>
+          <div style={{fontWeight:700,fontSize:14,color:"#374151",marginBottom:16,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🏢 会社情報</div>
+          {[{k:"name",l:"会社名 *",ph:"株式会社〇〇解体"},{k:"zipcode",l:"郵便番号",ph:"100-0001"},{k:"address",l:"住所",ph:"東京都〇〇区..."},{k:"tel",l:"電話番号",ph:"03-0000-0000"}].map(f=>(
+            <div key={f.k} style={{marginBottom:12}}>
+              <label className="lbl">{f.l}</label>
+              <input className="ifield" placeholder={f.ph} value={co[f.k]} onChange={e=>setCo(p=>({...p,[f.k]:e.target.value}))}/>
+            </div>
+          ))}
+        </div>
+
+        <div className="card" style={{padding:24,marginBottom:14}}>
+          <div style={{fontWeight:700,fontSize:14,color:"#374151",marginBottom:16,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🧾 インボイス登録番号</div>
+          <input className="ifield" placeholder="T1234567890123（T+13桁）" value={co.invoiceNo} onChange={e=>setCo(p=>({...p,invoiceNo:e.target.value}))}/>
+          <div style={{fontSize:11,color:"#9ca3af",marginTop:6}}>未登録の場合は空欄でも進めます</div>
+        </div>
+
+        <div className="card" style={{padding:24,marginBottom:20}}>
+          <div style={{fontWeight:700,fontSize:14,color:"#374151",marginBottom:16,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🏦 振込先口座</div>
+          {[{k:"bankName",l:"銀行名",ph:"〇〇銀行"},{k:"bankBranch",l:"支店名",ph:"〇〇支店"},{k:"bankType",l:"口座種別",ph:"普通"},{k:"bankNo",l:"口座番号",ph:"1234567"},{k:"bankHolder",l:"口座名義（カナ）",ph:"カ）〇〇カイタイ"}].map(f=>(
+            <div key={f.k} style={{marginBottom:12}}>
+              <label className="lbl">{f.l}</label>
+              <input className="ifield" placeholder={f.ph} value={co[f.k]} onChange={e=>setCo(p=>({...p,[f.k]:e.target.value}))}/>
+            </div>
+          ))}
+        </div>
+
+        <button className="bp" style={{width:"100%",fontSize:15,padding:"14px"}} onClick={async()=>{
+          if(!co.name||co.name===DEFAULT_CO.name) return alert("会社名を入力してください");
+          await saveSettings();
+          await loadSettings();
+        }}>
+          設定を保存してはじめる →
+        </button>
+        <div style={{textAlign:"center",marginTop:12}}>
+          <button onClick={async()=>{
+            setCo(p=>({...p,name:"設定済み"}));
+          }} style={{background:"none",border:"none",color:"#9ca3af",fontSize:12,cursor:"pointer"}}>
+            後で設定する
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   if(showPrint&&printTarget)return <PrintView doc={printTarget} co={co} tax={TAX} onClose={()=>setShowPrint(false)}/>;
 
@@ -975,7 +1077,7 @@ function App(){
                 </div>
               ))}
             </div>
-            {isAdmin&&<button className="bp" style={{width:"100%",fontSize:15,padding:"13px"}} onClick={()=>alert("保存しました！")}>保存する</button>}
+            {isAdmin&&<button className="bp" style={{width:"100%",fontSize:15,padding:"13px"}} onClick={saveSettings}>保存する</button>}
           </div>
         )}
       </div>

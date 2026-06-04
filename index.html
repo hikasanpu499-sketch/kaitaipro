@@ -296,9 +296,21 @@ function LoginScreen(){
     if(!code){setErr("招待コードを入力してください");setLoading(false);return;}
     const{data:codeData,error:codeErr}=await sb.from("invite_codes").select("*").eq("code",code.toUpperCase()).single();
     if(codeErr||!codeData){setErr("招待コードが無効です");setLoading(false);return;}
+    // 既存アカウントか確認
+    const{data:existingMember}=await sb.from("members").select("id").eq("email",email).single();
+    if(existingMember){
+      // すでにmembersにいる場合はcompany_idだけ更新
+      const{error:updateErr}=await sb.from("members").update({role:codeData.role,company_id:codeData.company_id,invited_by:codeData.created_by}).eq("email",email);
+      if(updateErr){setErr(`登録エラー: ${updateErr.message}`);setLoading(false);return;}
+      setErr("✅ 登録完了！ログインしてください。");
+      setLoading(false);
+      return;
+    }
+    // 新規アカウントの場合はサインアップ
     const{error:signupErr}=await sb.auth.signUp({email,password:pass});
     if(signupErr){setErr(signupErr.message);setLoading(false);return;}
-    await sb.from("members").insert({email,role:codeData.role,invited_by:codeData.created_by,company_id:codeData.company_id});
+    const{error:memberErr}=await sb.from("members").insert({email,role:codeData.role,invited_by:codeData.created_by,company_id:codeData.company_id});
+    if(memberErr){setErr(`メンバー登録エラー: ${memberErr.message}`);setLoading(false);return;}
     setErr("✅ 登録完了！ログインしてください。");
     setLoading(false);
   }

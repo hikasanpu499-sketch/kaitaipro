@@ -217,7 +217,7 @@ function InvitePanel({user}){
     if(!email) return alert("メールアドレスを入力してください");
     setLoading(true); setMsg("");
     const {error}=await sb.from("members").insert({email,role,invited_by:user.email});
-    if(error){ setMsg("❌ 登録に失敗しました（既に登録済みの可能性）"); }
+    if(error){ setMsg(`❌ エラー: ${error.message}`); }
     else {
       setMsg(`✅ ${email} を登録しました。本人に「${window.location.origin}」から新規登録するよう伝えてください。`);
       setEmail(""); setShowInvite(false); loadMembers();

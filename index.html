@@ -296,25 +296,20 @@ function LoginScreen(){
     if(!code){setErr("招待コードを入力してください");setLoading(false);return;}
     const{data:codeData,error:codeErr}=await sb.from("invite_codes").select("*").eq("code",code.toUpperCase()).single();
     if(codeErr||!codeData){setErr("招待コードが無効です");setLoading(false);return;}
-    // まずログインを試みる（既存アカウントの場合）
+    // まずログインを試みる
     const{error:loginErr}=await sb.auth.signInWithPassword({email,password:pass});
-    if(!loginErr){
-      // ログイン成功 → membersを更新して完了
-      const{data:existingMember}=await sb.from("members").select("id").eq("email",email).single();
-      if(existingMember){
-        await sb.from("members").update({role:codeData.role,company_id:codeData.company_id,invited_by:codeData.created_by}).eq("email",email);
-      }else{
-        await sb.from("members").insert({email,role:codeData.role,invited_by:codeData.created_by,company_id:codeData.company_id});
-      }
-      setLoading(false);
-      return;
+    if(loginErr){
+      // ログイン失敗の場合のみ新規登録
+      const{error:signupErr}=await sb.auth.signUp({email,password:pass});
+      if(signupErr){setErr("メールアドレスまたはパスワードが正しくありません");setLoading(false);return;}
     }
-    // ログイン失敗 → 新規アカウントとして登録
-    const{error:signupErr}=await sb.auth.signUp({email,password:pass});
-    if(signupErr){setErr("登録エラー: メールアドレスまたはパスワードを確認してください");setLoading(false);return;}
-    const{error:memberErr}=await sb.from("members").insert({email,role:codeData.role,invited_by:codeData.created_by,company_id:codeData.company_id});
-    if(memberErr){setErr(`メンバー登録エラー: ${memberErr.message}`);setLoading(false);return;}
-    setErr("✅ 登録完了！ログインしてください。");
+    // membersを更新または新規作成
+    const{data:existingMember}=await sb.from("members").select("id").eq("email",email).single();
+    if(existingMember){
+      await sb.from("members").update({role:codeData.role,company_id:codeData.company_id,invited_by:codeData.created_by}).eq("email",email);
+    }else{
+      await sb.from("members").insert({email,role:codeData.role,invited_by:codeData.created_by,company_id:codeData.company_id});
+    }
     setLoading(false);
   }
 

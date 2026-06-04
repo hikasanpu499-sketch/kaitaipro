@@ -413,10 +413,26 @@ function App(){
   const isAdmin=role==="admin";
 
   useEffect(()=>{
-    sb.auth.getSession().then(({data:{session}})=>{setUser(session?.user||null);setAuthLoading(false);});
-    const{data:{subscription}}=sb.auth.onAuthStateChange((_,session)=>{setUser(session?.user||null);});
+    sb.auth.getSession().then(({data:{session}})=>{
+      setUser(session?.user||null);
+      setAuthLoading(false);
+      if(session?.user) loadSettingsImmediate();
+    });
+    const{data:{subscription}}=sb.auth.onAuthStateChange((_,session)=>{
+      setUser(session?.user||null);
+      if(session?.user) loadSettingsImmediate();
+    });
     return()=>subscription.unsubscribe();
   },[]);
+
+  async function loadSettingsImmediate(){
+    const{data}=await sb.from("company_settings").select("*").limit(1).single();
+    if(data){
+      setCo({name:data.name||"",zipcode:data.zipcode||"",address:data.address||"",tel:data.tel||"",invoiceNo:data.invoice_no||"",bankName:data.bank_name||"",bankBranch:data.bank_branch||"",bankType:data.bank_type||"普通",bankNo:data.bank_no||"",bankHolder:data.bank_holder||""});
+      if(data.tax_rate)setTaxRate(data.tax_rate);
+      setSetupDone(true);
+    }
+  }
 
   useEffect(()=>{if(user){loadCompany();loadSettings();}},[user]);
   useEffect(()=>{if(companyId){loadDocs();}},[companyId]);
@@ -462,7 +478,9 @@ function App(){
   async function saveSettings(){
     const settings={name:co.name,zipcode:co.zipcode,address:co.address,tel:co.tel,invoice_no:co.invoiceNo,bank_name:co.bankName,bank_branch:co.bankBranch,bank_type:co.bankType,bank_no:co.bankNo,bank_holder:co.bankHolder,tax_rate:taxRate};
     if(companyId) settings.company_id=companyId;
-    const{data:existing}=await sb.from("company_settings").select("id").limit(1).single();
+    let query=sb.from("company_settings").select("id").limit(1);
+    if(companyId) query=query.eq("company_id",companyId);
+    const{data:existing}=await query.single();
     if(existing)await sb.from("company_settings").update(settings).eq("id",existing.id);
     else await sb.from("company_settings").insert(settings);
     alert("✅ 保存しました！");
@@ -780,6 +798,7 @@ function App(){
         {!sub&&tab==="settings"&&(
           <div className="fade">
             <div style={{fontWeight:900,fontSize:20,marginBottom:16}}>設定</div>
+            {dbLoading&&<div style={{textAlign:"center",padding:20,color:"#9ca3af",fontSize:13}}>読み込み中...</div>}
             {isAdmin&&companyId&&(
               <div className="card" style={{padding:20,marginBottom:14}}>
                 <div style={{fontWeight:700,fontSize:13,marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>👥 ユーザー管理</div>

@@ -55,7 +55,7 @@ const sc = s => STATUS_COLORS[s]||"#9ca3af";
 
 const SAMPLE = [];
 
-const DEFAULT_CO = {name:"株式会社〇〇解体",zipcode:"100-0001",address:"東京都千代田区〇〇1-1-1",tel:"03-0000-0000",invoiceNo:"T1234567890123",bankName:"〇〇銀行",bankBranch:"〇〇支店",bankType:"普通",bankNo:"1234567",bankHolder:"カ）〇〇カイタイ"};
+const DEFAULT_CO = {name:"",zipcode:"",address:"",tel:"",invoiceNo:"",bankName:"",bankBranch:"",bankType:"普通",bankNo:"",bankHolder:""};
 
 function FlowBar({current,onChange}){
   const flowMap={"見積":"見積中","受注":"受注済","請求":"請求済","入金":"入金済","完了":"完了"};
@@ -601,8 +601,10 @@ function App(){
 
   if(!user)return <LoginScreen/>;
 
+  const [setupDone,setSetupDone]=useState(false);
+
   // 管理者で会社名が未設定の場合は初期設定画面を表示
-  if(isAdmin && co.name===DEFAULT_CO.name && !dbLoading) return (
+  if(isAdmin && !co.name && !dbLoading && !setupDone) return (
     <div style={{minHeight:"100vh",background:"#f3f4f6",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <div style={{width:"100%",maxWidth:420}}>
         <div style={{textAlign:"center",marginBottom:24}}>
@@ -651,16 +653,14 @@ function App(){
         </div>
 
         <button className="bp" style={{width:"100%",fontSize:15,padding:"14px"}} onClick={async()=>{
-          if(!co.name||co.name===DEFAULT_CO.name) return alert("会社名を入力してください");
+          if(!co.name) return alert("会社名を入力してください");
           await saveSettings();
-          await loadSettings();
+          setSetupDone(true);
         }}>
           設定を保存してはじめる →
         </button>
         <div style={{textAlign:"center",marginTop:12}}>
-          <button onClick={async()=>{
-            setCo(p=>({...p,name:"設定済み"}));
-          }} style={{background:"none",border:"none",color:"#9ca3af",fontSize:12,cursor:"pointer"}}>
+          <button onClick={()=>setSetupDone(true)} style={{background:"none",border:"none",color:"#9ca3af",fontSize:12,cursor:"pointer"}}>
             後で設定する
           </button>
         </div>

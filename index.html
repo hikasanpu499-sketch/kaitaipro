@@ -450,7 +450,14 @@ function App(){
       }
       return;
     }
-    // 3) どこにも見つからない場合は新規会社として自動作成
+    // 3) 管理者として新規登録（招待なしで直接登録したユーザー）
+    // membersにいるがcompany_idがない＝招待コードのcompany_idが未設定のスタッフ → エラー表示のみ
+    if(member){
+      alert("招待コードに会社情報が紐付いていません。管理者に再発行を依頼してください。");
+      await sb.auth.signOut();
+      return;
+    }
+    // membersにもいない完全新規 → 会社を自動作成
     const{data:newCompany}=await sb.from("companies").insert({name:"未設定",owner_email:user.email}).select().single();
     if(newCompany){
       setCompanyId(newCompany.id);

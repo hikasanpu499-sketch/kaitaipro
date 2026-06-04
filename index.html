@@ -276,8 +276,10 @@ function LoginScreen(){
     const{data,error}=await sb.auth.signUp({email,password:pass});
     if(error){setErr(error.message);setLoading(false);return;}
     // 会社を作成
-    const{error:companyErr}=await sb.from("companies").insert({name:companyName,owner_email:email});
+    const{data:company,error:companyErr}=await sb.from("companies").insert({name:companyName,owner_email:email}).select().single();
     if(companyErr){setErr(`会社登録エラー: ${companyErr.message}`);setLoading(false);return;}
+    // 管理者をmembersにも登録（company_idを持たせる）
+    await sb.from("members").insert({email,role:"admin",company_id:company.id,invited_by:email});
     setErr("✅ 登録完了！ログインしてください。");
     setLoading(false);
   }
@@ -453,10 +455,8 @@ function App(){
   }
 
   async function loadSettings(){
-    // company_idがあればそれで絞り込み、なければ最初の1件を取得
-    let query=sb.from("company_settings").select("*").limit(1);
-    if(companyId) query=query.eq("company_id",companyId);
-    const{data}=await query.single();
+    if(!companyId) return;
+    const{data}=await sb.from("company_settings").select("*").eq("company_id",companyId).limit(1).single();
     if(data){
       setCo({name:data.name||"",zipcode:data.zipcode||"",address:data.address||"",tel:data.tel||"",invoiceNo:data.invoice||"",bankName:data.bank_name||"",bankBranch:data.bank_branch||"",bankType:data.bank_type||"普通",bankNo:data.bank_no||"",bankHolder:data.bank_holder||""});
       if(data.tax_rate)setTaxRate(data.tax_rate);
@@ -465,11 +465,9 @@ function App(){
   }
 
   async function saveSettings(){
-    const settings={name:co.name,zipcode:co.zipcode,address:co.address,tel:co.tel,invoice:co.invoiceNo,bank_name:co.bankName,bank_branch:co.bankBranch,bank_type:co.bankType,bank_no:co.bankNo,bank_holder:co.bankHolder,tax_rate:taxRate};
-    if(companyId) settings.company_id=companyId;
-    let query=sb.from("company_settings").select("id").limit(1);
-    if(companyId) query=query.eq("company_id",companyId);
-    const{data:existing,error:selErr}=await query.single();
+    if(!companyId){alert("❌ 会社IDが取得できていません。再ログインしてください。");return;}
+    const settings={name:co.name,zipcode:co.zipcode,address:co.address,tel:co.tel,invoice:co.invoiceNo,bank_name:co.bankName,bank_branch:co.bankBranch,bank_type:co.bankType,bank_no:co.bankNo,bank_holder:co.bankHolder,tax_rate:taxRate,company_id:companyId};
+    const{data:existing,error:selErr}=await sb.from("company_settings").select("id").eq("company_id",companyId).limit(1).single();
     if(selErr&&selErr.code!=="PGRST116"){alert("❌ 検索エラー: "+selErr.message);return;}
     if(existing){
       const{error:updErr}=await sb.from("company_settings").update(settings).eq("id",existing.id);

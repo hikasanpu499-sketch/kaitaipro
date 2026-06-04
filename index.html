@@ -192,6 +192,7 @@ function InvitePanel({user,companyId}){
   function generateCode(r){const p=r==="admin"?"ADMIN":"STAFF";const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";for(let i=0;i<6;i++)s+=c[Math.floor(Math.random()*c.length)];return`${p}-${s}`;}
   async function createCode(){
     setLoading(true);setMsg("");
+    if(!companyId){setMsg("❌ 会社IDが取得できていません。再ログインしてください。");setLoading(false);return;}
     const code=generateCode(role);
     const{error}=await sb.from("invite_codes").insert({code,role,used:false,created_by:user.email,company_id:companyId});
     if(error){setMsg(`❌ 失敗: ${error.message}`);}
@@ -429,21 +430,32 @@ function App(){
   useEffect(()=>{if(companyId){loadDocs();loadSettings();}},[companyId]);
 
   async function loadCompany(){
-    // まずmembersテーブルで会社IDを確認
+    // 1) membersテーブルでcompany_idを確認
     const{data:member}=await sb.from("members").select("company_id,role").eq("email",user.email).single();
     if(member&&member.company_id){
       setCompanyId(member.company_id);
       setRole(member.role);
-    }else{
-      // membersにない場合はcompaniesテーブルで確認（管理者）
-      const{data:company}=await sb.from("companies").select("id").eq("owner_email",user.email).single();
-      if(company){
-        setCompanyId(company.id);
-        setRole("admin");
+      return;
+    }
+    // 2) companiesテーブルでオーナーとして確認
+    const{data:company}=await sb.from("companies").select("id").eq("owner_email",user.email).single();
+    if(company){
+      setCompanyId(company.id);
+      setRole("admin");
+      // membersのcompany_idを補完
+      if(member){
+        await sb.from("members").update({company_id:company.id,role:"admin"}).eq("email",user.email);
       }else{
-        // 新規管理者（まだ会社が作られていない場合）
-        setRole("admin");
+        await sb.from("members").insert({email:user.email,role:"admin",company_id:company.id,invited_by:user.email});
       }
+      return;
+    }
+    // 3) どこにも見つからない場合は新規会社として自動作成
+    const{data:newCompany}=await sb.from("companies").insert({name:"未設定",owner_email:user.email}).select().single();
+    if(newCompany){
+      setCompanyId(newCompany.id);
+      setRole("admin");
+      await sb.from("members").insert({email:user.email,role:"admin",company_id:newCompany.id,invited_by:user.email});
     }
   }
 

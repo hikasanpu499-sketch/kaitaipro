@@ -12,11 +12,9 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#f3f4f6;font-family:'Noto Sans JP',sans-serif;color:#111;}
-::-webkit-scrollbar{width:4px;}
-::-webkit-scrollbar-thumb{background:#c84b00;border-radius:2px;}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:#c84b00;border-radius:2px;}
 input,select,textarea{font-family:inherit;}
-.fade{animation:fi .2s ease;}
-@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.fade{animation:fi .2s ease;}@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 .card{background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
 .ifield{background:#fff;border:1px solid #d1d5db;color:#111;padding:9px 11px;border-radius:6px;font-size:13px;width:100%;outline:none;transition:border-color .15s;}
 .ifield:focus{border-color:#c84b00;box-shadow:0 0 0 3px rgba(200,75,0,.1);}
@@ -33,30 +31,24 @@ input,select,textarea{font-family:inherit;}
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const {useState, useEffect} = React;
+const {useState,useEffect}=React;
+const SUPABASE_URL="https://ucsvoqufrdddjqlvjhsp.supabase.co";
+const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjc3ZvcXVmcmRkZGpxbHZqaHNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNTI1NjYsImV4cCI6MjA5NTkyODU2Nn0.aM9Zgb6u48mWyzFw2TL5QYQGnjUAWqtKDAiMpzJfdCg";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const AC="#c84b00";
+const FLOW_STEPS=["見積","受注","請求","入金","完了"];
+const STATUS_COLORS={"見積中":"#3b82f6","受注済":"#8b5cf6","請求済":"#f59e0b","入金済":"#16a34a","完了":"#9ca3af","キャンセル":"#ef4444"};
+const CATEGORIES=["建物解体工事","内装解体工事","基礎解体工事","産業廃棄物処理","アスベスト除去工事","重機回送費","養生・仮設工事","整地工事","その他"];
+const EMPTY_CO={name:"",zipcode:"",address:"",tel:"",invoiceNo:"",bankName:"",bankBranch:"",bankType:"普通",bankNo:"",bankHolder:""};
+const yen=n=>`¥${Number(n||0).toLocaleString("ja-JP")}`;
+const today=()=>new Date().toISOString().split("T")[0];
+const addDays=(s,n)=>{const d=new Date(s);d.setDate(d.getDate()+n);return d.toISOString().split("T")[0];};
+const genNo=()=>{const d=new Date();return `KT-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}-${Math.floor(Math.random()*900+100)}`;};
+const calcSub=items=>items.reduce((s,i)=>s+(Number(i.qty)||0)*(Number(i.unitPrice)||0),0);
+const emptyItem=()=>({id:Date.now()+Math.random(),category:CATEGORIES[0],description:"",qty:1,unit:"式",unitPrice:0});
+const sc=s=>STATUS_COLORS[s]||"#9ca3af";
 
-// Supabase設定
-const SUPABASE_URL = "https://ucsvoqufrdddjqlvjhsp.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjc3ZvcXVmcmRkZGpxbHZqaHNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNTI1NjYsImV4cCI6MjA5NTkyODU2Nn0.aM9Zgb6u48mWyzFw2TL5QYQGnjUAWqtKDAiMpzJfdCg";
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-const AC = "#c84b00";
-const FLOW_STEPS = ["見積","受注","請求","入金","完了"];
-const STATUS_COLORS = {"見積中":"#3b82f6","受注済":"#8b5cf6","請求済":"#f59e0b","入金済":"#16a34a","完了":"#9ca3af","キャンセル":"#ef4444"};
-const CATEGORIES = ["建物解体工事","内装解体工事","基礎解体工事","産業廃棄物処理","アスベスト除去工事","重機回送費","養生・仮設工事","整地工事","その他"];
-
-const yen = n => `¥${Number(n||0).toLocaleString("ja-JP")}`;
-const today = () => new Date().toISOString().split("T")[0];
-const addDays = (s,n) => { const d=new Date(s); d.setDate(d.getDate()+n); return d.toISOString().split("T")[0]; };
-const genNo = () => { const d=new Date(); return `KT-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}-${Math.floor(Math.random()*900+100)}`; };
-const calcSub = items => items.reduce((s,i)=>s+(Number(i.qty)||0)*(Number(i.unitPrice)||0),0);
-const emptyItem = () => ({id:Date.now()+Math.random(),category:CATEGORIES[0],description:"",qty:1,unit:"式",unitPrice:0});
-const sc = s => STATUS_COLORS[s]||"#9ca3af";
-
-const SAMPLE = [];
-
-const DEFAULT_CO = {name:"",zipcode:"",address:"",tel:"",invoiceNo:"",bankName:"",bankBranch:"",bankType:"普通",bankNo:"",bankHolder:""};
-
+// ── FlowBar ──────────────────────────────────────────────
 function FlowBar({current,onChange}){
   const flowMap={"見積":"見積中","受注":"受注済","請求":"請求済","入金":"入金済","完了":"完了"};
   const currentIdx=FLOW_STEPS.findIndex(s=>flowMap[s]===current);
@@ -77,16 +69,16 @@ function FlowBar({current,onChange}){
   );
 }
 
+// ── PrintView ────────────────────────────────────────────
 function PrintView({doc,co,tax:TAX,onClose}){
   const sub=calcSub(doc.items),taxAmt=Math.floor(sub*TAX),total=sub+taxAmt;
   const isInv=["請求済","入金済","完了"].includes(doc.flowStatus);
-
   function openPrint(){
     const html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>${isInv?"請求書":"見積書"} - ${doc.client.name}</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet"/>
 <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Noto Sans JP',sans-serif;font-size:13px;color:#111;padding:40px;max-width:794px;margin:0 auto;}
-.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #111;padding-bottom:16px;margin-bottom:24px;}
-.brand{font-size:22px;font-weight:500;color:#111;letter-spacing:0.05em;}
+.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #374151;padding-bottom:16px;margin-bottom:24px;}
+.brand{font-size:20px;font-weight:500;color:#111;}
 .doc-type{font-size:28px;font-weight:500;color:#111;margin-top:4px;}
 .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px;}
 .info-box{background:#fafafa;padding:14px;border:1px solid #e5e7eb;}
@@ -105,7 +97,7 @@ td{padding:8px 10px;border-bottom:1px solid #f3f4f6;}
 .footer{margin-top:32px;padding-top:12px;border-top:1px solid #f3f4f6;font-size:10px;color:#d1d5db;text-align:center;}
 @media print{button{display:none!important;}}
 </style></head><body>
-<div style="text-align:right;margin-bottom:16px;"><button onclick="window.print()" style="background:#111;color:#fff;border:none;padding:10px 20px;font-size:14px;font-weight:700;border-radius:4px;cursor:pointer;">🖨 印刷 / PDF保存</button></div>
+<div style="text-align:right;margin-bottom:16px;"><button onclick="window.print()" style="background:#374151;color:#fff;border:none;padding:10px 20px;font-size:14px;font-weight:700;border-radius:4px;cursor:pointer;">🖨 印刷 / PDF保存</button></div>
 <div class="header">
   <div><div class="brand">${co.name}</div><div class="doc-type">${isInv?"請求書":"見積書"}</div></div>
   <div style="text-align:right;font-size:11px;color:#6b7280;line-height:2;">
@@ -127,7 +119,7 @@ td{padding:8px 10px;border-bottom:1px solid #f3f4f6;}
 </div>
 <div class="site-box"><span style="font-size:9px;color:#374151;text-transform:uppercase;letter-spacing:0.1em;margin-right:10px;">件名</span><span style="font-weight:600;">${doc.site}</span></div>
 <div class="total-box">
-  <div style="font-size:10px;color:#9ca3af;margin-bottom:4px;">${isInv?"ご請求金額（税込）":"お見積金額（税込）"}</div>
+  <div style="font-size:11px;color:#6b7280;margin-bottom:4px;">${isInv?"ご請求金額（税込）":"お見積金額（税込）"}</div>
   <div class="total-amount">¥${total.toLocaleString("ja-JP")}</div>
 </div>
 <table>
@@ -146,10 +138,8 @@ ${doc.memo?`<div style="font-size:12px;color:#374151;border-top:1px solid #f3f4f
 <div class="footer">${co.name}　〒${co.zipcode} ${co.address}　TEL: ${co.tel}　登録番号: ${co.invoiceNo}</div>
 </body></html>`;
     const blob=new Blob([html],{type:"text/html;charset=utf-8"});
-    const url=URL.createObjectURL(blob);
-    window.open(url,"_blank");
+    window.open(URL.createObjectURL(blob),"_blank");
   }
-
   return (
     <div style={{position:"fixed",inset:0,background:"#f3f4f6",zIndex:2000,overflow:"auto",display:"flex",flexDirection:"column"}}>
       <div style={{padding:"12px 16px",display:"flex",gap:10,alignItems:"center",background:"#fff",borderBottom:"1px solid #e5e7eb",position:"sticky",top:0}}>
@@ -157,40 +147,30 @@ ${doc.memo?`<div style="font-size:12px;color:#374151;border-top:1px solid #f3f4f
         <button className="bg" onClick={onClose}>✕ 閉じる</button>
       </div>
       <div style={{padding:16,maxWidth:680,margin:"0 auto",width:"100%"}}>
-        <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"14px 16px",marginBottom:16,fontSize:13,color:"#92400e",lineHeight:1.8}}>
-          📌 <strong>PDF保存の手順</strong><br/>
-          ① 「PDF出力画面を開く」をタップ<br/>
-          ② 新しい画面の「🖨 印刷/PDF保存」をタップ<br/>
-          ③ 共有ボタン→「プリント」→ PDF保存
+        <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"12px 16px",marginBottom:16,fontSize:13,color:"#92400e",lineHeight:1.8}}>
+          📌 「PDF出力画面を開く」→「🖨 印刷/PDF保存」→ 共有→プリント→PDF保存
         </div>
-        {/* プレビュー */}
         <div style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,padding:20}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",borderBottom:"3px solid #c84b00",paddingBottom:14,marginBottom:20}}>
-            <div>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:"#c84b00",letterSpacing:"0.08em"}}>KAITAI PRO</div>
-              <div style={{fontSize:15,fontWeight:700}}>{isInv?"請求書":"見積書"}</div>
-            </div>
-            <div style={{textAlign:"right",fontSize:11,color:"#6b7280",lineHeight:2}}>
-              <div>{doc.no}</div><div>{doc.createdAt}</div>
-            </div>
+          <div style={{display:"flex",justifyContent:"space-between",borderBottom:"2px solid #374151",paddingBottom:14,marginBottom:20}}>
+            <div><div style={{fontSize:18,fontWeight:500,color:"#111"}}>{co.name}</div><div style={{fontSize:22,fontWeight:500,color:"#111"}}>{isInv?"請求書":"見積書"}</div></div>
+            <div style={{textAlign:"right",fontSize:11,color:"#6b7280",lineHeight:2}}><div>{doc.no}</div><div>{doc.createdAt}</div></div>
           </div>
-          <div style={{textAlign:"center",padding:"14px",border:"2px solid #c84b00",borderRadius:6,marginBottom:16}}>
+          <div style={{textAlign:"center",padding:"12px",border:"2px solid #374151",borderRadius:6,marginBottom:16}}>
             <div style={{fontSize:10,color:"#9ca3af",marginBottom:4}}>{isInv?"ご請求金額（税込）":"お見積金額（税込）"}</div>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:32,color:"#c84b00"}}>¥{total.toLocaleString("ja-JP")}</div>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:32,color:"#374151"}}>¥{total.toLocaleString("ja-JP")}</div>
           </div>
-          <div style={{fontSize:13,color:"#374151",marginBottom:8}}><strong>{doc.client.name}</strong> 御中　{doc.client.person} 様</div>
+          <div style={{fontSize:13,marginBottom:8}}><strong>{doc.client.name}</strong> 御中　{doc.client.person} 様</div>
           <div style={{fontSize:12,color:"#6b7280",marginBottom:16}}>{doc.site}</div>
-          {doc.items.map((item,i)=>{
-            const amt=(Number(item.qty)||0)*(Number(item.unitPrice)||0);
-            return <div key={item.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #f3f4f6",fontSize:12}}>
-              <span style={{color:"#c84b00",minWidth:80}}>{item.category}</span>
-              <span style={{flex:1,marginLeft:8,color:"#374151"}}>{item.description}</span>
+          {doc.items.map(item=>{const amt=(Number(item.qty)||0)*(Number(item.unitPrice)||0);return(
+            <div key={item.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #f3f4f6",fontSize:12}}>
+              <span style={{color:"#374151",minWidth:80}}>{item.category}</span>
+              <span style={{flex:1,marginLeft:8}}>{item.description}</span>
               <span style={{fontWeight:700}}>¥{amt.toLocaleString("ja-JP")}</span>
-            </div>;
-          })}
-          <div style={{textAlign:"right",marginTop:12,paddingTop:12,borderTop:"2px solid #c84b00"}}>
-            <span style={{fontSize:12,color:"#c84b00",fontWeight:700}}>合計（税込）　</span>
-            <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:"#111"}}>¥{total.toLocaleString("ja-JP")}</span>
+            </div>
+          );})}
+          <div style={{textAlign:"right",marginTop:12,paddingTop:12,borderTop:"2px solid #374151"}}>
+            <span style={{fontSize:12,fontWeight:700}}>合計（税込）　</span>
+            <span style={{fontSize:24,fontWeight:900}}>¥{total.toLocaleString("ja-JP")}</span>
           </div>
         </div>
       </div>
@@ -198,83 +178,47 @@ ${doc.memo?`<div style="font-size:12px;color:#374151;border-top:1px solid #f3f4f
   );
 }
 
-function InvitePanel({user}){
+// ── InvitePanel ──────────────────────────────────────────
+function InvitePanel({user,companyId}){
   const [role,setRole]=useState("staff");
   const [loading,setLoading]=useState(false);
   const [msg,setMsg]=useState("");
   const [members,setMembers]=useState([]);
   const [codes,setCodes]=useState([]);
   const [showCodeForm,setShowCodeForm]=useState(false);
-
-  useEffect(()=>{ loadMembers(); loadCodes(); },[]);
-
-  async function loadMembers(){
-    const {data}=await sb.from("members").select("*").order("id",{ascending:true});
-    if(data) setMembers(data);
-  }
-
-  async function loadCodes(){
-    const {data}=await sb.from("invite_codes").select("*").order("id",{ascending:false});
-    if(data) setCodes(data);
-  }
-
-  function generateCode(r){
-    const prefix=r==="admin"?"ADMIN":"STAFF";
-    const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let c="";
-    for(let i=0;i<6;i++) c+=chars[Math.floor(Math.random()*chars.length)];
-    return `${prefix}-${c}`;
-  }
-
+  useEffect(()=>{loadMembers();loadCodes();},[]);
+  async function loadMembers(){const{data}=await sb.from("members").select("*").eq("company_id",companyId).order("id",{ascending:true});if(data)setMembers(data);}
+  async function loadCodes(){const{data}=await sb.from("invite_codes").select("*").eq("company_id",companyId).order("id",{ascending:false});if(data)setCodes(data);}
+  function generateCode(r){const p=r==="admin"?"ADMIN":"STAFF";const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";for(let i=0;i<6;i++)s+=c[Math.floor(Math.random()*c.length)];return`${p}-${s}`;}
   async function createCode(){
-    setLoading(true); setMsg("");
+    setLoading(true);setMsg("");
     const code=generateCode(role);
-    const {error}=await sb.from("invite_codes").insert({code,role,used:false,created_by:user.email});
-    if(error){ setMsg(`❌ コード発行に失敗しました: ${error.message}`); }
-    else {
-      setMsg(`✅ 招待コードを発行しました！\n\n🔑 コード：${code}\n👤 権限：${role==="admin"?"管理者":"スタッフ"}\n\n相手に以下を伝えてください：\nURL：${window.location.origin}\nコード：${code}`);
-      setShowCodeForm(false); loadCodes();
-    }
+    const{error}=await sb.from("invite_codes").insert({code,role,used:false,created_by:user.email,company_id:companyId});
+    if(error){setMsg(`❌ 失敗: ${error.message}`);}
+    else{setMsg(`✅ 招待コードを発行しました！\n\n🔑 コード：${code}\n👤 権限：${role==="admin"?"管理者":"スタッフ"}\n\nURL：${window.location.origin}\nコード：${code}`);setShowCodeForm(false);loadCodes();}
     setLoading(false);
   }
-
-  async function deleteCode(id){ await sb.from("invite_codes").delete().eq("id",id); loadCodes(); }
-
-  async function changeRole(id,newRole){ await sb.from("members").update({role:newRole}).eq("id",id); loadMembers(); }
-
-  async function removeMember(id,memberEmail){
-    if(!confirm(`${memberEmail} を削除しますか？`)) return;
-    await sb.from("members").delete().eq("id",id); loadMembers();
-  }
-
-  const roleColor = r => r==="admin"?"#c84b00":"#3b82f6";
-
+  async function deleteCode(id){await sb.from("invite_codes").delete().eq("id",id);loadCodes();}
+  async function changeRole(id,newRole){await sb.from("members").update({role:newRole}).eq("id",id);loadMembers();}
+  async function removeMember(id,email){if(!confirm(`${email}を削除しますか？`))return;await sb.from("members").delete().eq("id",id);loadMembers();}
+  const rc=r=>r==="admin"?"#c84b00":"#3b82f6";
   return (
     <div>
       {msg&&<div style={{fontSize:12,padding:"12px 14px",background:msg.includes("✅")?"#f0fdf4":"#fef2f2",border:`1px solid ${msg.includes("✅")?"#bbf7d0":"#fecaca"}`,borderRadius:8,marginBottom:14,color:msg.includes("✅")?"#16a34a":"#ef4444",lineHeight:1.8,whiteSpace:"pre-line"}}>{msg}</div>}
-
-      {/* 招待コード発行 */}
       <div style={{marginBottom:16}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
           <div style={{fontSize:12,color:"#6b7280",fontWeight:700}}>招待コード</div>
-          <button className="bp" style={{fontSize:12,padding:"6px 12px"}} onClick={()=>setShowCodeForm(!showCodeForm)}>
-            {showCodeForm?"✕ 閉じる":"🔑 コードを発行"}
-          </button>
+          <button className="bp" style={{fontSize:12,padding:"6px 12px"}} onClick={()=>setShowCodeForm(!showCodeForm)}>{showCodeForm?"✕ 閉じる":"🔑 コードを発行"}</button>
         </div>
         {showCodeForm&&(
           <div style={{background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:8,padding:16,marginBottom:12}}>
             <label className="lbl">権限</label>
             <div style={{display:"flex",gap:8,marginBottom:14}}>
               {[{v:"staff",l:"👤 スタッフ"},{v:"admin",l:"👑 管理者"}].map(r=>(
-                <button key={r.v} onClick={()=>setRole(r.v)}
-                  style={{flex:1,background:role===r.v?AC:"#fff",color:role===r.v?"#fff":"#374151",border:`1.5px solid ${role===r.v?AC:"#d1d5db"}`,padding:"8px",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>
-                  {r.l}
-                </button>
+                <button key={r.v} onClick={()=>setRole(r.v)} style={{flex:1,background:role===r.v?AC:"#fff",color:role===r.v?"#fff":"#374151",border:`1.5px solid ${role===r.v?AC:"#d1d5db"}`,padding:"8px",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>{r.l}</button>
               ))}
             </div>
-            <button className="bp" style={{width:"100%"}} onClick={createCode} disabled={loading}>
-              {loading?"発行中...":"コードを発行する"}
-            </button>
+            <button className="bp" style={{width:"100%"}} onClick={createCode} disabled={loading}>{loading?"発行中...":"コードを発行する"}</button>
           </div>
         )}
         {codes.length>0&&(
@@ -283,58 +227,45 @@ function InvitePanel({user}){
             {codes.map(c=>(
               <div key={c.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:6,marginBottom:6}}>
                 <span style={{fontFamily:"monospace",fontSize:14,fontWeight:900,color:"#111",letterSpacing:"0.1em",flex:1}}>{c.code}</span>
-                <span style={{background:`${roleColor(c.role)}15`,color:roleColor(c.role),border:`1px solid ${roleColor(c.role)}33`,padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700}}>
-                  {c.role==="admin"?"管理者":"スタッフ"}
-                </span>
+                <span style={{background:`${rc(c.role)}15`,color:rc(c.role),border:`1px solid ${rc(c.role)}33`,padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700}}>{c.role==="admin"?"管理者":"スタッフ"}</span>
                 <button onClick={()=>deleteCode(c.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:14}}>×</button>
               </div>
             ))}
           </div>
         )}
       </div>
-
-      {/* メンバー一覧 */}
       <div style={{borderTop:"1px solid #f3f4f6",paddingTop:14}}>
         <div style={{fontSize:12,color:"#6b7280",fontWeight:700,marginBottom:12}}>メンバー一覧 ({members.length}人)</div>
-        {members.length===0?(
-          <div style={{textAlign:"center",padding:"16px",color:"#9ca3af",fontSize:13}}>まだメンバーがいません</div>
-        ):(
-          members.map(m=>(
-            <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:"1px solid #f3f4f6"}}>
-              <div style={{width:32,height:32,borderRadius:"50%",background:`${roleColor(m.role)}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>
-                {m.role==="admin"?"👑":"👤"}
-              </div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:13,fontWeight:600,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.email}</div>
-              </div>
-              <select value={m.role} onChange={e=>changeRole(m.id,e.target.value)}
-                style={{background:`${roleColor(m.role)}10`,color:roleColor(m.role),border:`1px solid ${roleColor(m.role)}33`,padding:"4px 8px",borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",outline:"none"}}>
-                <option value="staff">スタッフ</option>
-                <option value="admin">管理者</option>
-              </select>
-              <button onClick={()=>removeMember(m.id,m.email)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:16,padding:"0 4px"}}>×</button>
-            </div>
-          ))
-        )}
+        {members.length===0?<div style={{textAlign:"center",padding:"16px",color:"#9ca3af",fontSize:13}}>まだメンバーがいません</div>:members.map(m=>(
+          <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:"1px solid #f3f4f6"}}>
+            <div style={{width:32,height:32,borderRadius:"50%",background:`${rc(m.role)}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>{m.role==="admin"?"👑":"👤"}</div>
+            <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.email}</div></div>
+            <select value={m.role} onChange={e=>changeRole(m.id,e.target.value)} style={{background:`${rc(m.role)}10`,color:rc(m.role),border:`1px solid ${rc(m.role)}33`,padding:"4px 8px",borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",outline:"none"}}>
+              <option value="staff">スタッフ</option><option value="admin">管理者</option>
+            </select>
+            <button onClick={()=>removeMember(m.id,m.email)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:16,padding:"0 4px"}}>×</button>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
+// ── LoginScreen ──────────────────────────────────────────
 function LoginScreen(){
   const [mode,setMode]=useState("login");
   const [email,setEmail]=useState("");
   const [pass,setPass]=useState("");
   const [code,setCode]=useState("");
-  const [loading,setLoading]=useState(false);
-  const [err,setErr]=useState("");
   const [companyName,setCompanyName]=useState("");
   const [companyTel,setCompanyTel]=useState("");
   const [companyAddress,setCompanyAddress]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [err,setErr]=useState("");
 
   async function handleLogin(){
     setLoading(true);setErr("");
-    const {error}=await sb.auth.signInWithPassword({email,password:pass});
+    const{error}=await sb.auth.signInWithPassword({email,password:pass});
     if(error)setErr("メールアドレスまたはパスワードが違います");
     setLoading(false);
   }
@@ -342,21 +273,23 @@ function LoginScreen(){
   async function handleAdminSignup(){
     setLoading(true);setErr("");
     if(!companyName){setErr("会社名を入力してください");setLoading(false);return;}
-    const {error}=await sb.auth.signUp({email,password:pass});
-    if(error){setErr(error.message);}
-    else setErr("✅ 登録完了！確認メールを確認してからログインしてください。");
+    const{data,error}=await sb.auth.signUp({email,password:pass});
+    if(error){setErr(error.message);setLoading(false);return;}
+    // 会社を作成
+    await sb.from("companies").insert({name:companyName,owner_email:email});
+    setErr("✅ 登録完了！ログインしてください。");
     setLoading(false);
   }
 
   async function handleInviteSignup(){
     setLoading(true);setErr("");
     if(!code){setErr("招待コードを入力してください");setLoading(false);return;}
-    const {data:codeData,error:codeErr}=await sb.from("invite_codes").select("*").eq("code",code.toUpperCase()).single();
+    const{data:codeData,error:codeErr}=await sb.from("invite_codes").select("*").eq("code",code.toUpperCase()).single();
     if(codeErr||!codeData){setErr("招待コードが無効です");setLoading(false);return;}
-    const {error:signupErr}=await sb.auth.signUp({email,password:pass});
+    const{error:signupErr}=await sb.auth.signUp({email,password:pass});
     if(signupErr){setErr(signupErr.message);setLoading(false);return;}
-    await sb.from("members").insert({email,role:codeData.role,invited_by:codeData.created_by});
-    setErr("✅ 登録完了！確認メールを確認してからログインしてください。");
+    await sb.from("members").insert({email,role:codeData.role,invited_by:codeData.created_by,company_id:codeData.company_id});
+    setErr("✅ 登録完了！ログインしてください。");
     setLoading(false);
   }
 
@@ -364,96 +297,46 @@ function LoginScreen(){
     <div style={{minHeight:"100vh",background:"#f3f4f6",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <div style={{width:"100%",maxWidth:380}}>
         <div style={{textAlign:"center",marginBottom:32}}>
-          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:48,color:"#c84b00",letterSpacing:"0.1em"}}>KAITAI PRO</div>
+          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:48,color:AC,letterSpacing:"0.1em"}}>KAITAI PRO</div>
           <div style={{fontSize:13,color:"#6b7280",marginTop:4}}>解体業専用 請求・見積管理</div>
         </div>
-
-        {/* ログイン */}
         {mode==="login"&&(
           <div className="card" style={{padding:28}}>
-            <div style={{fontWeight:700,fontSize:16,marginBottom:20,color:"#111"}}>ログイン</div>
-            <div style={{marginBottom:12}}>
-              <label className="lbl">メールアドレス</label>
-              <input className="ifield" type="email" placeholder="example@email.com" value={email} onChange={e=>setEmail(e.target.value)}/>
-            </div>
-            <div style={{marginBottom:20}}>
-              <label className="lbl">パスワード</label>
-              <input className="ifield" type="password" placeholder="6文字以上" value={pass} onChange={e=>setPass(e.target.value)}/>
-            </div>
+            <div style={{fontWeight:700,fontSize:16,marginBottom:20}}>ログイン</div>
+            <div style={{marginBottom:12}}><label className="lbl">メールアドレス</label><input className="ifield" type="email" placeholder="example@email.com" value={email} onChange={e=>setEmail(e.target.value)}/></div>
+            <div style={{marginBottom:20}}><label className="lbl">パスワード</label><input className="ifield" type="password" placeholder="6文字以上" value={pass} onChange={e=>setPass(e.target.value)}/></div>
             {err&&<div style={{fontSize:12,color:"#ef4444",marginBottom:14,padding:"8px 12px",background:"#fef2f2",borderRadius:6}}>{err}</div>}
-            <button className="bp" style={{width:"100%",fontSize:15,padding:"13px"}} onClick={handleLogin} disabled={loading}>
-              {loading?"処理中...":"ログイン"}
-            </button>
+            <button className="bp" style={{width:"100%",fontSize:15,padding:"13px"}} onClick={handleLogin} disabled={loading}>{loading?"処理中...":"ログイン"}</button>
             <div style={{marginTop:20,display:"flex",flexDirection:"column",gap:10}}>
-              <button onClick={()=>{setMode("signup_invite");setErr("");}} style={{background:"#f0fdf4",border:"1px solid #bbf7d0",color:"#16a34a",padding:"10px",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>
-                📨 招待コードで新規登録
-              </button>
-              <button onClick={()=>{setMode("signup_admin");setErr("");}} style={{background:"#f9fafb",border:"1px solid #e5e7eb",color:"#6b7280",padding:"10px",borderRadius:6,fontSize:12,cursor:"pointer"}}>
-                管理者として新規登録
-              </button>
+              <button onClick={()=>{setMode("signup_invite");setErr("");}} style={{background:"#f0fdf4",border:"1px solid #bbf7d0",color:"#16a34a",padding:"10px",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer"}}>📨 招待コードで新規登録</button>
+              <button onClick={()=>{setMode("signup_admin");setErr("");}} style={{background:"#f9fafb",border:"1px solid #e5e7eb",color:"#6b7280",padding:"10px",borderRadius:6,fontSize:12,cursor:"pointer"}}>管理者として新規登録</button>
             </div>
           </div>
         )}
-
-        {/* 招待コードで登録 */}
         {mode==="signup_invite"&&(
           <div className="card" style={{padding:28}}>
-            <div style={{fontWeight:700,fontSize:16,marginBottom:6,color:"#111"}}>招待コードで登録</div>
-            <div style={{fontSize:12,color:"#6b7280",marginBottom:20}}>管理者から受け取った招待コードを入力してください</div>
-            <div style={{marginBottom:12}}>
-              <label className="lbl">招待コード</label>
-              <input className="ifield" placeholder="例: STAFF-X7K2AB" value={code} onChange={e=>setCode(e.target.value)} style={{textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700}}/>
-            </div>
-            <div style={{marginBottom:12}}>
-              <label className="lbl">メールアドレス</label>
-              <input className="ifield" type="email" placeholder="example@email.com" value={email} onChange={e=>setEmail(e.target.value)}/>
-            </div>
-            <div style={{marginBottom:20}}>
-              <label className="lbl">パスワード（6文字以上）</label>
-              <input className="ifield" type="password" placeholder="6文字以上" value={pass} onChange={e=>setPass(e.target.value)}/>
-            </div>
+            <div style={{fontWeight:700,fontSize:16,marginBottom:6}}>招待コードで登録</div>
+            <div style={{fontSize:12,color:"#6b7280",marginBottom:20}}>管理者から受け取ったコードを入力してください</div>
+            <div style={{marginBottom:12}}><label className="lbl">招待コード</label><input className="ifield" placeholder="例: STAFF-X7K2AB" value={code} onChange={e=>setCode(e.target.value)} style={{textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700}}/></div>
+            <div style={{marginBottom:12}}><label className="lbl">メールアドレス</label><input className="ifield" type="email" placeholder="example@email.com" value={email} onChange={e=>setEmail(e.target.value)}/></div>
+            <div style={{marginBottom:20}}><label className="lbl">パスワード（6文字以上）</label><input className="ifield" type="password" placeholder="6文字以上" value={pass} onChange={e=>setPass(e.target.value)}/></div>
             {err&&<div style={{fontSize:12,color:err.includes("✅")?"#16a34a":"#ef4444",marginBottom:14,padding:"8px 12px",background:err.includes("✅")?"#f0fdf4":"#fef2f2",borderRadius:6}}>{err}</div>}
-            <button className="bp" style={{width:"100%",fontSize:15,padding:"13px",background:"#16a34a"}} onClick={handleInviteSignup} disabled={loading}>
-              {loading?"処理中...":"登録する"}
-            </button>
-            <div style={{textAlign:"center",marginTop:14}}>
-              <button onClick={()=>{setMode("login");setErr("");}} style={{background:"none",border:"none",color:"#9ca3af",fontSize:12,cursor:"pointer"}}>← ログインに戻る</button>
-            </div>
+            <button className="bp" style={{width:"100%",fontSize:15,padding:"13px",background:"#16a34a"}} onClick={handleInviteSignup} disabled={loading}>{loading?"処理中...":"登録する"}</button>
+            <div style={{textAlign:"center",marginTop:14}}><button onClick={()=>{setMode("login");setErr("");}} style={{background:"none",border:"none",color:"#9ca3af",fontSize:12,cursor:"pointer"}}>← ログインに戻る</button></div>
           </div>
         )}
-
-        {/* 管理者登録 */}
         {mode==="signup_admin"&&(
           <div className="card" style={{padding:28}}>
-            <div style={{fontWeight:700,fontSize:16,marginBottom:6,color:"#111"}}>管理者として登録</div>
+            <div style={{fontWeight:700,fontSize:16,marginBottom:6}}>管理者として登録</div>
             <div style={{fontSize:12,color:"#6b7280",marginBottom:16}}>会社の管理者アカウントを作成します</div>
-            <div style={{marginBottom:12}}>
-              <label className="lbl">会社名 *</label>
-              <input className="ifield" placeholder="株式会社〇〇解体" value={companyName} onChange={e=>setCompanyName(e.target.value)}/>
-            </div>
-            <div style={{marginBottom:12}}>
-              <label className="lbl">電話番号</label>
-              <input className="ifield" placeholder="03-0000-0000" value={companyTel} onChange={e=>setCompanyTel(e.target.value)}/>
-            </div>
-            <div style={{marginBottom:12}}>
-              <label className="lbl">住所</label>
-              <input className="ifield" placeholder="東京都〇〇区..." value={companyAddress} onChange={e=>setCompanyAddress(e.target.value)}/>
-            </div>
-            <div style={{borderTop:"1px solid #f3f4f6",paddingTop:14,marginBottom:12}}>
-              <label className="lbl">メールアドレス</label>
-              <input className="ifield" type="email" placeholder="example@email.com" value={email} onChange={e=>setEmail(e.target.value)}/>
-            </div>
-            <div style={{marginBottom:20}}>
-              <label className="lbl">パスワード（6文字以上）</label>
-              <input className="ifield" type="password" placeholder="6文字以上" value={pass} onChange={e=>setPass(e.target.value)}/>
-            </div>
+            <div style={{marginBottom:12}}><label className="lbl">会社名 *</label><input className="ifield" placeholder="株式会社〇〇解体" value={companyName} onChange={e=>setCompanyName(e.target.value)}/></div>
+            <div style={{marginBottom:12}}><label className="lbl">電話番号</label><input className="ifield" placeholder="03-0000-0000" value={companyTel} onChange={e=>setCompanyTel(e.target.value)}/></div>
+            <div style={{marginBottom:12}}><label className="lbl">住所</label><input className="ifield" placeholder="東京都〇〇区..." value={companyAddress} onChange={e=>setCompanyAddress(e.target.value)}/></div>
+            <div style={{borderTop:"1px solid #f3f4f6",paddingTop:14,marginBottom:12}}><label className="lbl">メールアドレス</label><input className="ifield" type="email" placeholder="example@email.com" value={email} onChange={e=>setEmail(e.target.value)}/></div>
+            <div style={{marginBottom:20}}><label className="lbl">パスワード（6文字以上）</label><input className="ifield" type="password" placeholder="6文字以上" value={pass} onChange={e=>setPass(e.target.value)}/></div>
             {err&&<div style={{fontSize:12,color:err.includes("✅")?"#16a34a":"#ef4444",marginBottom:14,padding:"8px 12px",background:err.includes("✅")?"#f0fdf4":"#fef2f2",borderRadius:6}}>{err}</div>}
-            <button className="bp" style={{width:"100%",fontSize:15,padding:"13px"}} onClick={handleAdminSignup} disabled={loading}>
-              {loading?"処理中...":"管理者登録する"}
-            </button>
-            <div style={{textAlign:"center",marginTop:14}}>
-              <button onClick={()=>{setMode("login");setErr("");}} style={{background:"none",border:"none",color:"#9ca3af",fontSize:12,cursor:"pointer"}}>← ログインに戻る</button>
-            </div>
+            <button className="bp" style={{width:"100%",fontSize:15,padding:"13px"}} onClick={handleAdminSignup} disabled={loading}>{loading?"処理中...":"管理者登録する"}</button>
+            <div style={{textAlign:"center",marginTop:14}}><button onClick={()=>{setMode("login");setErr("");}} style={{background:"none",border:"none",color:"#9ca3af",fontSize:12,cursor:"pointer"}}>← ログインに戻る</button></div>
           </div>
         )}
       </div>
@@ -461,109 +344,133 @@ function LoginScreen(){
   );
 }
 
+// ── SetupScreen ──────────────────────────────────────────
+function SetupScreen({co,setCo,onComplete}){
+  const[loading,setLoading]=useState(false);
+  async function handleSave(){
+    if(!co.name)return alert("会社名を入力してください");
+    setLoading(true);
+    const settings={name:co.name,zipcode:co.zipcode,address:co.address,tel:co.tel,invoice_no:co.invoiceNo,bank_name:co.bankName,bank_branch:co.bankBranch,bank_type:co.bankType,bank_no:co.bankNo,bank_holder:co.bankHolder,tax_rate:10};
+    const{data:existing}=await sb.from("company_settings").select("id").limit(1).single();
+    if(existing)await sb.from("company_settings").update(settings).eq("id",existing.id);
+    else await sb.from("company_settings").insert(settings);
+    setLoading(false);
+    onComplete();
+  }
+  return (
+    <div style={{minHeight:"100vh",background:"#f3f4f6",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{width:"100%",maxWidth:420}}>
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,color:AC,letterSpacing:"0.1em"}}>KAITAI PRO</div>
+          <div style={{fontSize:15,fontWeight:700,color:"#111",marginTop:8}}>🎉 登録完了！</div>
+          <div style={{fontSize:13,color:"#6b7280",marginTop:6}}>まず会社情報を設定してください</div>
+        </div>
+        <div className="card" style={{padding:24,marginBottom:14}}>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:16,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🏢 会社情報</div>
+          {[{k:"name",l:"会社名 *",ph:"株式会社〇〇解体"},{k:"zipcode",l:"郵便番号",ph:"100-0001"},{k:"address",l:"住所",ph:"東京都〇〇区..."},{k:"tel",l:"電話番号",ph:"03-0000-0000"}].map(f=>(
+            <div key={f.k} style={{marginBottom:12}}><label className="lbl">{f.l}</label><input className="ifield" placeholder={f.ph} value={co[f.k]} onChange={e=>setCo(p=>({...p,[f.k]:e.target.value}))}/></div>
+          ))}
+        </div>
+        <div className="card" style={{padding:24,marginBottom:14}}>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:16,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🧾 インボイス登録番号</div>
+          <input className="ifield" placeholder="T1234567890123（T+13桁）" value={co.invoiceNo} onChange={e=>setCo(p=>({...p,invoiceNo:e.target.value}))}/>
+          <div style={{fontSize:11,color:"#9ca3af",marginTop:6}}>未登録の場合は空欄でも進めます</div>
+        </div>
+        <div className="card" style={{padding:24,marginBottom:20}}>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:16,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🏦 振込先口座</div>
+          {[{k:"bankName",l:"銀行名",ph:"〇〇銀行"},{k:"bankBranch",l:"支店名",ph:"〇〇支店"},{k:"bankType",l:"口座種別",ph:"普通"},{k:"bankNo",l:"口座番号",ph:"1234567"},{k:"bankHolder",l:"口座名義（カナ）",ph:"カ）〇〇カイタイ"}].map(f=>(
+            <div key={f.k} style={{marginBottom:12}}><label className="lbl">{f.l}</label><input className="ifield" placeholder={f.ph} value={co[f.k]} onChange={e=>setCo(p=>({...p,[f.k]:e.target.value}))}/></div>
+          ))}
+        </div>
+        <button className="bp" style={{width:"100%",fontSize:15,padding:"14px"}} onClick={handleSave} disabled={loading}>{loading?"保存中...":"設定を保存してはじめる →"}</button>
+        <div style={{textAlign:"center",marginTop:12}}><button onClick={onComplete} style={{background:"none",border:"none",color:"#9ca3af",fontSize:12,cursor:"pointer"}}>後で設定する</button></div>
+      </div>
+    </div>
+  );
+}
+
+// ── App ──────────────────────────────────────────────────
 function App(){
-  const [user,setUser]=useState(null);
-  const [authLoading,setAuthLoading]=useState(true);
-  const [role,setRole]=useState("staff"); // デフォルトはスタッフ
-  const [docs,setDocs]=useState([]);
-  const [tab,setTab]=useState("home");
-  const [sub,setSub]=useState(null);
-  const [selected,setSelected]=useState(null);
-  const [form,setForm]=useState(null);
-  const [co,setCo]=useState(DEFAULT_CO);
-  const [taxRate,setTaxRate]=useState(10);
-  const [filter,setFilter]=useState("ALL");
-  const [showPrint,setShowPrint]=useState(false);
-  const [printTarget,setPrintTarget]=useState(null);
-  const [dbLoading,setDbLoading]=useState(false);
-  const [setupDone,setSetupDone]=useState(false);
+  const[user,setUser]=useState(null);
+  const[authLoading,setAuthLoading]=useState(true);
+  const[companyId,setCompanyId]=useState(null);
+  const[role,setRole]=useState("staff");
+  const[docs,setDocs]=useState([]);
+  const[tab,setTab]=useState("home");
+  const[sub,setSub]=useState(null);
+  const[selected,setSelected]=useState(null);
+  const[form,setForm]=useState(null);
+  const[co,setCo]=useState(EMPTY_CO);
+  const[taxRate,setTaxRate]=useState(10);
+  const[filter,setFilter]=useState("ALL");
+  const[showPrint,setShowPrint]=useState(false);
+  const[printTarget,setPrintTarget]=useState(null);
+  const[dbLoading,setDbLoading]=useState(false);
+  const[setupDone,setSetupDone]=useState(false);
 
-  const TAX = taxRate / 100;
-  const isAdmin = role === "admin";
+  const TAX=taxRate/100;
+  const isAdmin=role==="admin";
 
-  // 認証状態を監視
   useEffect(()=>{
-    sb.auth.getSession().then(({data:{session}})=>{
-      setUser(session?.user||null);
-      setAuthLoading(false);
-    });
-    const {data:{subscription}}=sb.auth.onAuthStateChange((_,session)=>{
-      setUser(session?.user||null);
-    });
-    return ()=>subscription.unsubscribe();
+    sb.auth.getSession().then(({data:{session}})=>{setUser(session?.user||null);setAuthLoading(false);});
+    const{data:{subscription}}=sb.auth.onAuthStateChange((_,session)=>{setUser(session?.user||null);});
+    return()=>subscription.unsubscribe();
   },[]);
 
-  // ログイン後にデータと権限を読み込む
-  useEffect(()=>{
-    if(user){ loadDocs(); loadRole(); loadSettings(); }
-  },[user]);
+  useEffect(()=>{if(user){loadCompany();}},[user]);
+  useEffect(()=>{if(companyId){loadDocs();loadSettings();}},[companyId]);
 
-  async function loadRole(){
-    const {data}=await sb.from("members").select("role").eq("email",user.email).single();
-    if(data) setRole(data.role);
-    else setRole("admin");
-  }
-
-  async function loadSettings(){
-    const {data}=await sb.from("company_settings").select("*").limit(1).single();
-    if(data){
-      setCo({
-        name:data.name||DEFAULT_CO.name,
-        zipcode:data.zipcode||DEFAULT_CO.zipcode,
-        address:data.address||DEFAULT_CO.address,
-        tel:data.tel||DEFAULT_CO.tel,
-        invoiceNo:data.invoice_no||DEFAULT_CO.invoiceNo,
-        bankName:data.bank_name||DEFAULT_CO.bankName,
-        bankBranch:data.bank_branch||DEFAULT_CO.bankBranch,
-        bankType:data.bank_type||DEFAULT_CO.bankType,
-        bankNo:data.bank_no||DEFAULT_CO.bankNo,
-        bankHolder:data.bank_holder||DEFAULT_CO.bankHolder,
-      });
-      if(data.tax_rate) setTaxRate(data.tax_rate);
-    }
-  }
-
-  async function saveSettings(){
-    const settings={
-      name:co.name, zipcode:co.zipcode, address:co.address, tel:co.tel,
-      invoice_no:co.invoiceNo, bank_name:co.bankName, bank_branch:co.bankBranch,
-      bank_type:co.bankType, bank_no:co.bankNo, bank_holder:co.bankHolder,
-      tax_rate:taxRate
-    };
-    const {data:existing}=await sb.from("company_settings").select("id").limit(1).single();
-    if(existing){
-      await sb.from("company_settings").update(settings).eq("id",existing.id);
+  async function loadCompany(){
+    // まずmembersテーブルで会社IDを確認
+    const{data:member}=await sb.from("members").select("company_id,role").eq("email",user.email).single();
+    if(member&&member.company_id){
+      setCompanyId(member.company_id);
+      setRole(member.role);
     }else{
-      await sb.from("company_settings").insert(settings);
+      // membersにない場合はcompaniesテーブルで確認（管理者）
+      const{data:company}=await sb.from("companies").select("id").eq("owner_email",user.email).single();
+      if(company){
+        setCompanyId(company.id);
+        setRole("admin");
+      }else{
+        // 新規管理者（まだ会社が作られていない場合）
+        setRole("admin");
+      }
     }
-    alert("✅ 保存しました！");
   }
 
   async function loadDocs(){
     setDbLoading(true);
-    const {data,error}=await sb.from("documents").select("*").order("created_at",{ascending:false});
-    if(!error&&data) setDocs(data.map(d=>({...d,...(typeof d.data==="string"?JSON.parse(d.data):d.data)})));
+    const{data,error}=await sb.from("documents").select("*").eq("company_id",companyId).order("created_at",{ascending:false});
+    if(!error&&data)setDocs(data.map(d=>({...d,...(typeof d.data==="string"?JSON.parse(d.data):d.data)})));
     setDbLoading(false);
   }
 
-  async function logout(){
-    await sb.auth.signOut();
-    setDocs([]);
-    goHome();
+  async function loadSettings(){
+    const{data}=await sb.from("company_settings").select("*").eq("company_id",companyId).limit(1).single();
+    if(data){
+      setCo({name:data.name||"",zipcode:data.zipcode||"",address:data.address||"",tel:data.tel||"",invoiceNo:data.invoice_no||"",bankName:data.bank_name||"",bankBranch:data.bank_branch||"",bankType:data.bank_type||"普通",bankNo:data.bank_no||"",bankHolder:data.bank_holder||""});
+      if(data.tax_rate)setTaxRate(data.tax_rate);
+      setSetupDone(true);
+    }
   }
 
+  async function saveSettings(){
+    const settings={name:co.name,zipcode:co.zipcode,address:co.address,tel:co.tel,invoice_no:co.invoiceNo,bank_name:co.bankName,bank_branch:co.bankBranch,bank_type:co.bankType,bank_no:co.bankNo,bank_holder:co.bankHolder,tax_rate:taxRate,company_id:companyId};
+    const{data:existing}=await sb.from("company_settings").select("id").eq("company_id",companyId).limit(1).single();
+    if(existing)await sb.from("company_settings").update(settings).eq("id",existing.id);
+    else await sb.from("company_settings").insert(settings);
+    alert("✅ 保存しました！");
+  }
+
+  async function logout(){await sb.auth.signOut();setDocs([]);setCompanyId(null);setSetupDone(false);goHome();}
   function goHome(){setTab("home");setSub(null);setForm(null);setSelected(null);}
-
-  function startNew(){
-    setForm({no:genNo(),createdAt:today(),dueDate:addDays(today(),30),flowStatus:"見積中",
-      client:{name:"",address:"",person:"",tel:""},site:"",items:[emptyItem()],memo:""});
-    setSub("new");setTab("home");
-  }
+  function startNew(){setForm({no:genNo(),createdAt:today(),dueDate:addDays(today(),30),flowStatus:"見積中",client:{name:"",address:"",person:"",tel:""},site:"",items:[emptyItem()],memo:""});setSub("new");setTab("home");}
 
   async function save(){
     if(!form.client.name||!form.site)return alert("取引先名と工事概要を入力してください");
-    const docData={no:form.no,created_at:form.createdAt,due_date:form.dueDate,flow_status:form.flowStatus,data:JSON.stringify(form),user_id:user.id};
-    const {data,error}=await sb.from("documents").insert(docData).select().single();
+    const docData={no:form.no,created_at:form.createdAt,due_date:form.dueDate,flow_status:form.flowStatus,data:JSON.stringify(form),user_id:user.id,company_id:companyId};
+    const{data,error}=await sb.from("documents").insert(docData).select().single();
     if(error){alert("保存に失敗しました");return;}
     setDocs(p=>[{...form,id:data.id},...p]);
     goHome();
@@ -573,101 +480,26 @@ function App(){
     setDocs(p=>p.map(d=>d.id===id?{...d,flowStatus:status,flow_status:status}:d));
     if(selected?.id===id)setSelected(s=>({...s,flowStatus:status}));
     const doc=docs.find(d=>d.id===id);
-    if(doc){
-      const updated={...doc,flowStatus:status};
-      await sb.from("documents").update({flow_status:status,data:JSON.stringify(updated)}).eq("id",id);
-    }
+    if(doc){const updated={...doc,flowStatus:status};await sb.from("documents").update({flow_status:status,data:JSON.stringify(updated)}).eq("id",id);}
   }
 
-  async function deleteDoc(id){
-    await sb.from("documents").delete().eq("id",id);
-    setDocs(p=>p.filter(d=>d.id!==id));
-    goHome();
-  }
+  async function deleteDoc(id){await sb.from("documents").delete().eq("id",id);setDocs(p=>p.filter(d=>d.id!==id));goHome();}
 
   const subTotal=form?calcSub(form.items):0;
   const txAmt=Math.floor(subTotal*TAX);
   const total=subTotal+txAmt;
-
   const summary={
     paid:docs.filter(d=>["入金済","完了"].includes(d.flowStatus)).reduce((s,d)=>{const b=calcSub(d.items);return s+b+Math.floor(b*TAX);},0),
     unpaid:docs.filter(d=>d.flowStatus==="請求済").reduce((s,d)=>{const b=calcSub(d.items);return s+b+Math.floor(b*TAX);},0),
     estimate:docs.filter(d=>["見積中","受注済"].includes(d.flowStatus)).reduce((s,d)=>{const b=calcSub(d.items);return s+b+Math.floor(b*TAX);},0),
     byStatus:Object.fromEntries(["見積中","受注済","請求済","入金済","完了","キャンセル"].map(s=>[s,docs.filter(d=>d.flowStatus===s).length])),
   };
-
   const filtered=filter==="ALL"?docs:docs.filter(d=>d.flowStatus===filter);
 
-  if(authLoading)return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f3f4f6"}}><div style={{color:"#c84b00",fontFamily:"'Bebas Neue',sans-serif",fontSize:32,letterSpacing:"0.1em"}}>読み込み中...</div></div>;
-
-  if(!user)return <LoginScreen/>;
-
-  // 管理者で会社名が未設定の場合は初期設定画面を表示
-  if(isAdmin && !co.name && !dbLoading && !setupDone) return (
-    <div style={{minHeight:"100vh",background:"#f3f4f6",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div style={{width:"100%",maxWidth:420}}>
-        <div style={{textAlign:"center",marginBottom:24}}>
-          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:40,color:AC,letterSpacing:"0.1em"}}>KAITAI PRO</div>
-          <div style={{fontSize:15,fontWeight:700,color:"#111",marginTop:8}}>🎉 登録完了！</div>
-          <div style={{fontSize:13,color:"#6b7280",marginTop:6}}>まず会社情報を設定してください</div>
-        </div>
-
-        {/* ステップ表示 */}
-        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:24}}>
-          {["会社情報","インボイス","振込先"].map((s,i)=>(
-            <div key={s} style={{display:"flex",alignItems:"center",gap:8}}>
-              <div style={{display:"flex",alignItems:"center",gap:4}}>
-                <div style={{width:22,height:22,borderRadius:"50%",background:AC,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900}}>{i+1}</div>
-                <span style={{fontSize:11,color:"#374151",fontWeight:600}}>{s}</span>
-              </div>
-              {i<2&&<div style={{width:20,height:1,background:"#d1d5db"}}/>}
-            </div>
-          ))}
-        </div>
-
-        <div className="card" style={{padding:24,marginBottom:14}}>
-          <div style={{fontWeight:700,fontSize:14,color:"#374151",marginBottom:16,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🏢 会社情報</div>
-          {[{k:"name",l:"会社名 *",ph:"株式会社〇〇解体"},{k:"zipcode",l:"郵便番号",ph:"100-0001"},{k:"address",l:"住所",ph:"東京都〇〇区..."},{k:"tel",l:"電話番号",ph:"03-0000-0000"}].map(f=>(
-            <div key={f.k} style={{marginBottom:12}}>
-              <label className="lbl">{f.l}</label>
-              <input className="ifield" placeholder={f.ph} value={co[f.k]} onChange={e=>setCo(p=>({...p,[f.k]:e.target.value}))}/>
-            </div>
-          ))}
-        </div>
-
-        <div className="card" style={{padding:24,marginBottom:14}}>
-          <div style={{fontWeight:700,fontSize:14,color:"#374151",marginBottom:16,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🧾 インボイス登録番号</div>
-          <input className="ifield" placeholder="T1234567890123（T+13桁）" value={co.invoiceNo} onChange={e=>setCo(p=>({...p,invoiceNo:e.target.value}))}/>
-          <div style={{fontSize:11,color:"#9ca3af",marginTop:6}}>未登録の場合は空欄でも進めます</div>
-        </div>
-
-        <div className="card" style={{padding:24,marginBottom:20}}>
-          <div style={{fontWeight:700,fontSize:14,color:"#374151",marginBottom:16,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🏦 振込先口座</div>
-          {[{k:"bankName",l:"銀行名",ph:"〇〇銀行"},{k:"bankBranch",l:"支店名",ph:"〇〇支店"},{k:"bankType",l:"口座種別",ph:"普通"},{k:"bankNo",l:"口座番号",ph:"1234567"},{k:"bankHolder",l:"口座名義（カナ）",ph:"カ）〇〇カイタイ"}].map(f=>(
-            <div key={f.k} style={{marginBottom:12}}>
-              <label className="lbl">{f.l}</label>
-              <input className="ifield" placeholder={f.ph} value={co[f.k]} onChange={e=>setCo(p=>({...p,[f.k]:e.target.value}))}/>
-            </div>
-          ))}
-        </div>
-
-        <button className="bp" style={{width:"100%",fontSize:15,padding:"14px"}} onClick={async()=>{
-          if(!co.name) return alert("会社名を入力してください");
-          await saveSettings();
-          setSetupDone(true);
-        }}>
-          設定を保存してはじめる →
-        </button>
-        <div style={{textAlign:"center",marginTop:12}}>
-          <button onClick={()=>setSetupDone(true)} style={{background:"none",border:"none",color:"#9ca3af",fontSize:12,cursor:"pointer"}}>
-            後で設定する
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  if(showPrint&&printTarget)return <PrintView doc={printTarget} co={co} tax={TAX} onClose={()=>setShowPrint(false)}/>;
+  if(authLoading)return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f3f4f6"}}><div style={{color:AC,fontFamily:"'Bebas Neue',sans-serif",fontSize:32,letterSpacing:"0.1em"}}>読み込み中...</div></div>;
+  if(!user)return<LoginScreen/>;
+  if(isAdmin&&companyId&&!setupDone&&!dbLoading)return<SetupScreen co={co} setCo={setCo} onComplete={()=>setSetupDone(true)}/>;
+  if(showPrint&&printTarget)return<PrintView doc={printTarget} co={co} tax={TAX} onClose={()=>setShowPrint(false)}/>;
 
   const NAV=[
     {id:"home",label:"案件",svg:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>},
@@ -686,7 +518,7 @@ function App(){
           <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:AC,letterSpacing:"0.1em"}}>KAITAI PRO</div>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          <span style={{fontSize:10,color:isAdmin?"#c84b00":"#3b82f6",background:isAdmin?"#fff7f0":"#eff6ff",border:`1px solid ${isAdmin?"#fbd5b5":"#bfdbfe"}`,padding:"2px 8px",borderRadius:999,fontWeight:700}}>{isAdmin?"管理者":"スタッフ"}</span>
+          <span style={{fontSize:10,color:isAdmin?AC:"#3b82f6",background:isAdmin?"#fff7f0":"#eff6ff",border:`1px solid ${isAdmin?"#fbd5b5":"#bfdbfe"}`,padding:"2px 8px",borderRadius:999,fontWeight:700}}>{isAdmin?"管理者":"スタッフ"}</span>
           {!sub&&tab==="home"&&<button className="bp" style={{fontSize:12,padding:"7px 14px"}} onClick={startNew}>＋ 新規</button>}
           {sub==="new"&&<><button className="bg" onClick={goHome}>キャンセル</button><button className="bp" onClick={save}>保存</button></>}
           {sub==="detail"&&<button className="bp" style={{fontSize:12,padding:"7px 12px"}} onClick={()=>{setPrintTarget(selected);setShowPrint(true);}}>📄 PDF</button>}
@@ -701,11 +533,7 @@ function App(){
           <div className="fade">
             {dbLoading&&<div style={{textAlign:"center",padding:20,color:"#9ca3af",fontSize:13}}>読み込み中...</div>}
             <div className="g4" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
-              {[
-                {l:"入金済",v:yen(summary.paid),c:"#16a34a",bg:"#f0fdf4"},
-                {l:"未入金",v:yen(summary.unpaid),c:"#f59e0b",bg:"#fffbeb"},
-                {l:"受注残",v:yen(summary.estimate),c:"#8b5cf6",bg:"#f5f3ff"},
-              ].map(s=>(
+              {[{l:"入金済",v:yen(summary.paid),c:"#16a34a",bg:"#f0fdf4"},{l:"未入金",v:yen(summary.unpaid),c:"#f59e0b",bg:"#fffbeb"},{l:"受注残",v:yen(summary.estimate),c:"#8b5cf6",bg:"#f5f3ff"}].map(s=>(
                 <div key={s.l} className="card" style={{padding:"12px 14px",background:s.bg,border:`1px solid ${s.c}22`,borderRadius:0}}>
                   <div style={{fontSize:9,color:s.c,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:4,fontWeight:700}}>{s.l}</div>
                   <div style={{fontSize:"clamp(14px,3vw,18px)",fontWeight:900,color:s.c,fontFamily:"'Bebas Neue',sans-serif"}}>{s.v}</div>
@@ -714,16 +542,14 @@ function App(){
             </div>
             <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
               {["ALL","見積中","受注済","請求済","入金済","完了"].map(s=>(
-                <button key={s} onClick={()=>setFilter(s)}
-                  style={{background:filter===s?(s==="ALL"?"#111":sc(s)):"#fff",color:filter===s?"#fff":(s==="ALL"?"#374151":sc(s)),border:`1.5px solid ${filter===s?(s==="ALL"?"#111":sc(s)):sc(s)+"44"}`,padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",transition:"all .15s"}}>
+                <button key={s} onClick={()=>setFilter(s)} style={{background:filter===s?(s==="ALL"?"#111":sc(s)):"#fff",color:filter===s?"#fff":(s==="ALL"?"#374151":sc(s)),border:`1.5px solid ${filter===s?(s==="ALL"?"#111":sc(s)):sc(s)+"44"}`,padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:700,cursor:"pointer",transition:"all .15s"}}>
                   {s}{s!=="ALL"&&` ${summary.byStatus[s]||0}`}
                 </button>
               ))}
             </div>
             {filtered.length===0&&!dbLoading&&(
               <div style={{textAlign:"center",padding:"48px 20px",color:"#9ca3af",fontSize:13}}>
-                <div style={{fontSize:40,marginBottom:10}}>🏗</div>
-                案件がありません<br/>
+                <div style={{fontSize:40,marginBottom:10}}>🏗</div>案件がありません<br/>
                 <button className="bp" style={{marginTop:16}} onClick={startNew}>＋ 新規案件を登録</button>
               </div>
             )}
@@ -747,9 +573,7 @@ function App(){
                       <div style={{fontSize:9,color:"#9ca3af"}}>税込</div>
                     </div>
                   </div>
-                  <div style={{paddingTop:8,borderTop:"1px solid #f3f4f6"}}>
-                    <FlowBar current={doc.flowStatus} onChange={s=>updateFlow(doc.id,s)}/>
-                  </div>
+                  <div style={{paddingTop:8,borderTop:"1px solid #f3f4f6"}}><FlowBar current={doc.flowStatus} onChange={s=>updateFlow(doc.id,s)}/></div>
                 </div>
               );
             })}
@@ -765,24 +589,24 @@ function App(){
             </div>
             <div className="g2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
               <div className="card" style={{padding:16}}>
-                <div style={{fontWeight:700,fontSize:12,color:"#374151",marginBottom:12,paddingBottom:8,borderBottom:"1px solid #f3f4f6"}}>基本情報</div>
+                <div style={{fontWeight:700,fontSize:12,marginBottom:12,paddingBottom:8,borderBottom:"1px solid #f3f4f6"}}>基本情報</div>
                 {[{l:"登録日",k:"createdAt",t:"date"},{l:"支払期限",k:"dueDate",t:"date"}].map(f=>(
                   <div key={f.k} style={{marginBottom:10}}><label className="lbl">{f.l}</label><input className="ifield" type={f.t} value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))}/></div>
                 ))}
               </div>
               <div className="card" style={{padding:16}}>
-                <div style={{fontWeight:700,fontSize:12,color:"#374151",marginBottom:12,paddingBottom:8,borderBottom:"1px solid #f3f4f6"}}>取引先情報</div>
+                <div style={{fontWeight:700,fontSize:12,marginBottom:12,paddingBottom:8,borderBottom:"1px solid #f3f4f6"}}>取引先情報</div>
                 {[{l:"会社名 *",k:"name",ph:"株式会社〇〇"},{l:"担当者",k:"person",ph:"山田 太郎"},{l:"電話番号",k:"tel",ph:"03-0000-0000"},{l:"住所",k:"address",ph:"東京都..."}].map(f=>(
                   <div key={f.k} style={{marginBottom:8}}><label className="lbl">{f.l}</label><input className="ifield" placeholder={f.ph} value={form.client[f.k]} onChange={e=>setForm(p=>({...p,client:{...p.client,[f.k]:e.target.value}}))}/></div>
                 ))}
               </div>
             </div>
             <div className="card" style={{padding:16,marginBottom:12}}>
-              <div style={{fontWeight:700,fontSize:12,color:"#374151",marginBottom:10}}>工事概要 *</div>
+              <div style={{fontWeight:700,fontSize:12,marginBottom:10}}>工事概要 *</div>
               <input className="ifield" placeholder="例: 渋谷区代々木2丁目 木造2階建て解体工事 延床120㎡" value={form.site} onChange={e=>setForm(p=>({...p,site:e.target.value}))}/>
             </div>
             <div className="card" style={{padding:16,marginBottom:12}}>
-              <div style={{fontWeight:700,fontSize:12,color:"#374151",marginBottom:10}}>工事明細</div>
+              <div style={{fontWeight:700,fontSize:12,marginBottom:10}}>工事明細</div>
               <div className="mob"><div style={{minWidth:520}}>
                 <div style={{display:"grid",gridTemplateColumns:"110px 1fr 58px 46px 100px 88px 28px",gap:5,marginBottom:6}}>
                   {["種別","内容","数量","単位","単価","金額",""].map(h=><div key={h} style={{fontSize:9,color:"#9ca3af",letterSpacing:"0.07em",textTransform:"uppercase"}}>{h}</div>)}
@@ -792,9 +616,7 @@ function App(){
                   const upd=(k,v)=>setForm(p=>({...p,items:p.items.map(it=>it.id===item.id?{...it,[k]:v}:it)}));
                   return (
                     <div key={item.id} style={{display:"grid",gridTemplateColumns:"110px 1fr 58px 46px 100px 88px 28px",gap:5,marginBottom:5}}>
-                      <select className="ifield" style={{fontSize:11,padding:"5px"}} value={item.category} onChange={e=>upd("category",e.target.value)}>
-                        {CATEGORIES.map(c=><option key={c}>{c}</option>)}
-                      </select>
+                      <select className="ifield" style={{fontSize:11,padding:"5px"}} value={item.category} onChange={e=>upd("category",e.target.value)}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select>
                       <input className="ifield" style={{fontSize:12}} placeholder="内容" value={item.description} onChange={e=>upd("description",e.target.value)}/>
                       <input className="ifield" style={{fontSize:12,textAlign:"right"}} type="number" value={item.qty} onChange={e=>upd("qty",e.target.value)}/>
                       <input className="ifield" style={{fontSize:12}} value={item.unit} onChange={e=>upd("unit",e.target.value)}/>
@@ -809,7 +631,7 @@ function App(){
             </div>
             <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
               <div className="card" style={{padding:16,minWidth:260}}>
-                {[["小計",yen(subTotal)],["消費税（10%）",yen(txAmt)]].map(([l,v])=>(
+                {[["小計",yen(subTotal)],["消費税（"+taxRate+"%）",yen(txAmt)]].map(([l,v])=>(
                   <div key={l} style={{display:"flex",justifyContent:"space-between",marginBottom:8,fontSize:13,color:"#6b7280"}}><span>{l}</span><span>{v}</span></div>
                 ))}
                 <div style={{borderTop:`2px solid ${AC}`,paddingTop:10,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
@@ -832,16 +654,13 @@ function App(){
             <div className="fade">
               <div className="card" style={{padding:16,marginBottom:12}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-                  <div>
-                    <div style={{fontWeight:900,fontSize:18}}>{selected.client.name}</div>
-                    <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{selected.no}</div>
-                  </div>
+                  <div><div style={{fontWeight:900,fontSize:18}}>{selected.client.name}</div><div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{selected.no}</div></div>
                   <span className="badge" style={{background:`${sc(selected.flowStatus)}15`,color:sc(selected.flowStatus),border:`1px solid ${sc(selected.flowStatus)}33`,fontSize:12,padding:"5px 12px"}}>{selected.flowStatus}</span>
                 </div>
                 <div style={{fontSize:12,color:"#6b7280",lineHeight:1.9}}>{selected.client.person} 様　{selected.client.tel}<br/>{selected.client.address}<br/>登録日: {selected.createdAt}　期限: {selected.dueDate}</div>
               </div>
               <div className="card" style={{padding:16,marginBottom:12}}>
-                <div style={{fontWeight:700,fontSize:12,color:"#374151",marginBottom:10}}>業務フロー</div>
+                <div style={{fontWeight:700,fontSize:12,marginBottom:10}}>業務フロー</div>
                 <FlowBar current={selected.flowStatus} onChange={s=>updateFlow(selected.id,s)}/>
               </div>
               <div className="card" style={{padding:"10px 14px",marginBottom:12,fontSize:12}}>
@@ -849,7 +668,7 @@ function App(){
                 <span style={{marginLeft:8,fontWeight:600}}>{selected.site}</span>
               </div>
               <div className="card" style={{padding:16,marginBottom:12}}>
-                <div style={{fontWeight:700,fontSize:12,color:"#374151",marginBottom:10}}>工事明細</div>
+                <div style={{fontWeight:700,fontSize:12,marginBottom:10}}>工事明細</div>
                 <div className="mob"><div style={{minWidth:460}}>
                   <div style={{display:"grid",gridTemplateColumns:"110px 1fr 50px 40px 90px 90px",gap:6,marginBottom:8}}>
                     {["種別","内容","数量","単位","単価","金額"].map(h=><div key={h} style={{fontSize:9,color:"#9ca3af",letterSpacing:"0.07em",textTransform:"uppercase"}}>{h}</div>)}
@@ -871,7 +690,7 @@ function App(){
               </div>
               <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
                 <div className="card" style={{padding:16,minWidth:260}}>
-                  {[["小計",yen(s2)],["消費税（10%）",yen(Math.floor(s2*TAX))]].map(([l,v])=>(
+                  {[["小計",yen(s2)],["消費税（"+taxRate+"%）",yen(Math.floor(s2*TAX))]].map(([l,v])=>(
                     <div key={l} style={{display:"flex",justifyContent:"space-between",marginBottom:8,fontSize:13,color:"#6b7280"}}><span>{l}</span><span>{v}</span></div>
                   ))}
                   <div style={{borderTop:`2px solid ${AC}`,paddingTop:10,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
@@ -895,26 +714,19 @@ function App(){
           <div className="fade">
             <div style={{fontWeight:900,fontSize:20,marginBottom:16}}>売上集計</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
-              {[
-                {l:"入金済",v:yen(summary.paid),c:"#16a34a",bg:"#f0fdf4"},
-                {l:"未入金",v:yen(summary.unpaid),c:"#f59e0b",bg:"#fffbeb"},
-                {l:"受注残",v:yen(summary.estimate),c:"#8b5cf6",bg:"#f5f3ff"},
-                {l:"総案件数",v:`${docs.length}件`,c:"#374151",bg:"#f9fafb"},
-              ].map(s=>(
+              {[{l:"入金済",v:yen(summary.paid),c:"#16a34a",bg:"#f0fdf4"},{l:"未入金（請求済）",v:yen(summary.unpaid),c:"#f59e0b",bg:"#fffbeb"},{l:"受注残",v:yen(summary.estimate),c:"#8b5cf6",bg:"#f5f3ff"},{l:"総案件数",v:`${docs.length}件`,c:"#374151",bg:"#f9fafb"}].map(s=>(
                 <div key={s.l} className="card" style={{padding:"14px 16px",background:s.bg,border:`1px solid ${s.c}22`}}>
                   <div style={{fontSize:9,color:s.c,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:4,fontWeight:700}}>{s.l}</div>
                   <div style={{fontSize:"clamp(18px,4vw,22px)",fontWeight:900,color:s.c,fontFamily:"'Bebas Neue',sans-serif"}}>{s.v}</div>
                 </div>
               ))}
             </div>
-            <div className="card" style={{padding:18,marginBottom:14}}>
-              <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14}}>ステータス別件数</div>
+            <div className="card" style={{padding:18}}>
+              <div style={{fontWeight:700,fontSize:13,marginBottom:14}}>ステータス別件数</div>
               {Object.entries(summary.byStatus).map(([s,n])=>(
                 <div key={s} style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                   <span style={{minWidth:72,fontSize:12,color:sc(s),fontWeight:700}}>{s}</span>
-                  <div style={{flex:1,height:8,background:"#f3f4f6",borderRadius:4,overflow:"hidden"}}>
-                    <div style={{width:`${docs.length>0?n/docs.length*100:0}%`,height:"100%",background:sc(s),borderRadius:4}}/>
-                  </div>
+                  <div style={{flex:1,height:8,background:"#f3f4f6",borderRadius:4,overflow:"hidden"}}><div style={{width:`${docs.length>0?n/docs.length*100:0}%`,height:"100%",background:sc(s),borderRadius:4}}/></div>
                   <span style={{fontSize:12,color:"#6b7280",minWidth:30,textAlign:"right"}}>{n}件</span>
                 </div>
               ))}
@@ -935,48 +747,12 @@ function App(){
               </div>
             </div>
             {[
-              {icon:"➕", title:"案件の登録方法", color:"#3b82f6", steps:[
-                "右上の「＋ 新規」ボタンをタップ",
-                "取引先名（会社名）を入力",
-                "工事概要（場所・工事内容）を入力",
-                "工事明細（種別・数量・単価）を入力",
-                "「保存」ボタンをタップして完了",
-              ]},
-              {icon:"🔄", title:"進捗の管理方法", color:"#8b5cf6", steps:[
-                "一覧画面に案件ごとのフローボタンが表示される",
-                "「見積」→「受注」→「請求」→「入金」→「完了」の順に進む",
-                "該当するボタンをタップするだけでステータスが変わる",
-                "色が変わって進捗が一目でわかる",
-              ]},
-              {icon:"📄", title:"PDF（請求書・見積書）の出力方法", color:"#c84b00", steps:[
-                "一覧から案件をタップして詳細画面を開く",
-                "「📄 PDF出力」ボタンをタップ",
-                "「PDFとして保存」ボタンをタップ",
-                "「印刷」→「送信先: PDFに保存」を選んで保存",
-              ]},
-              {icon:"⚙️", title:"初期設定（最初にやること）", color:"#6b7280", steps:[
-                "下メニューの「設定」をタップ",
-                "会社名・住所・電話番号を入力",
-                "インボイス登録番号（T+13桁）を入力",
-                "振込先の銀行口座を入力",
-                "消費税率を確認（デフォルト10%）",
-                "「保存する」をタップ",
-              ]},
-              {icon:"👥", title:"ユーザーの招待・管理方法（管理者のみ）", color:"#16a34a", steps:[
-                "下メニューの「設定」をタップ",
-                "「ユーザー管理」セクションでメンバー一覧を確認",
-                "「ユーザーを招待する」をタップ",
-                "招待したい人のメールアドレスを入力",
-                "権限を「スタッフ」か「管理者」から選ぶ",
-                "「招待する」をタップ → 相手にURLを共有して新規登録してもらう",
-                "メンバー一覧から権限変更・削除も可能",
-              ]},
-              {icon:"🔐", title:"権限について", color:"#f59e0b", steps:[
-                "管理者：全機能が使える＋ユーザー管理ができる",
-                "スタッフ：案件登録・編集・PDF出力ができる",
-                "ヘッダー右上に自分の権限が表示される",
-                "最初に登録したユーザーが自動的に管理者になる",
-              ]},
+              {icon:"➕",title:"案件の登録方法",color:"#3b82f6",steps:["右上の「＋ 新規」ボタンをタップ","取引先名（会社名）を入力","工事概要（場所・工事内容）を入力","工事明細（種別・数量・単価）を入力","「保存」ボタンをタップして完了"]},
+              {icon:"🔄",title:"進捗の管理方法",color:"#8b5cf6",steps:["一覧画面に案件ごとのフローボタンが表示される","「見積」→「受注」→「請求」→「入金」→「完了」の順に進む","該当するボタンをタップするだけでステータスが変わる","色が変わって進捗が一目でわかる"]},
+              {icon:"📄",title:"PDF（請求書・見積書）の出力方法",color:"#c84b00",steps:["一覧から案件をタップして詳細画面を開く","「📄 PDF出力」ボタンをタップ","「PDF出力画面を開く」をタップ","🖨ボタン→印刷→PDFに保存"]},
+              {icon:"⚙️",title:"初期設定（最初にやること）",color:"#6b7280",steps:["下メニューの「設定」をタップ","会社名・住所・電話番号を入力","インボイス登録番号（T+13桁）を入力","振込先の銀行口座を入力","「保存する」をタップ"]},
+              {icon:"👥",title:"ユーザーの招待・管理（管理者のみ）",color:"#16a34a",steps:["設定→「ユーザー管理」→「🔑 コードを発行」","権限（スタッフ/管理者）を選んでコード発行","コードとURLを相手に伝える","相手は「招待コードで新規登録」から登録"]},
+              {icon:"🔐",title:"権限について",color:"#f59e0b",steps:["管理者：全機能＋ユーザー管理ができる","スタッフ：案件登録・編集・PDF出力ができる","ヘッダー右上に自分の権限が表示される","A社とB社のデータは完全に分離されています"]},
             ].map((g,i)=>(
               <div key={i} className="card" style={{marginBottom:10,overflow:"hidden"}}>
                 <div style={{padding:"14px 16px",background:`${g.color}08`,borderBottom:"1px solid #f3f4f6",display:"flex",alignItems:"center",gap:10}}>
@@ -986,19 +762,12 @@ function App(){
                 <div style={{padding:"12px 16px"}}>
                   {g.steps.map((s,j)=>(
                     <div key={j} style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:8,fontSize:13,color:"#374151"}}>
-                      <span style={{width:20,height:20,borderRadius:"50%",background:g.color,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,flexShrink:0,marginTop:1}}>{j+1}</span>
-                      {s}
+                      <span style={{width:20,height:20,borderRadius:"50%",background:g.color,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,flexShrink:0,marginTop:1}}>{j+1}</span>{s}
                     </div>
                   ))}
                 </div>
               </div>
             ))}
-            <div className="card" style={{padding:16,background:"#fffbeb",border:"1px solid #fde68a"}}>
-              <div style={{fontSize:12,color:"#92400e",lineHeight:1.8}}>
-                💡 <strong>困ったときは</strong><br/>
-                PDF出力はパソコンのChromeブラウザから開くと一番きれいに出力されます。スマホからも可能ですが、印刷設定の「背景のグラフィック」をオンにすることをお勧めします。
-              </div>
-            </div>
           </div>
         )}
 
@@ -1006,73 +775,46 @@ function App(){
         {!sub&&tab==="settings"&&(
           <div className="fade">
             <div style={{fontWeight:900,fontSize:20,marginBottom:16}}>設定</div>
-
-            {/* ユーザー管理（管理者のみ） */}
-            {isAdmin&&(
-            <div className="card" style={{padding:20,marginBottom:14}}>
-              <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>👥 ユーザー管理</div>
-              <InvitePanel user={user}/>
-            </div>
-            )}
-
-            {/* スタッフ向け閲覧のみバナー */}
-            {!isAdmin&&(
-              <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#92400e"}}>
-                ⚠️ 設定の変更は管理者のみ行えます。
+            {isAdmin&&companyId&&(
+              <div className="card" style={{padding:20,marginBottom:14}}>
+                <div style={{fontWeight:700,fontSize:13,marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>👥 ユーザー管理</div>
+                <InvitePanel user={user} companyId={companyId}/>
               </div>
             )}
-
+            {!isAdmin&&<div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#92400e"}}>⚠️ 設定の変更は管理者のみ行えます。</div>}
             <div className="card" style={{padding:20,marginBottom:14}}>
-              <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🏢 会社情報</div>
+              <div style={{fontWeight:700,fontSize:13,marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🏢 会社情報</div>
               {[{k:"name",l:"会社名"},{k:"zipcode",l:"郵便番号"},{k:"address",l:"住所"},{k:"tel",l:"電話番号"}].map(f=>(
                 <div key={f.k} style={{marginBottom:12}}>
                   <label className="lbl">{f.l}</label>
-                  {isAdmin
-                    ? <input className="ifield" value={co[f.k]} onChange={e=>setCo(p=>({...p,[f.k]:e.target.value}))}/>
-                    : <div style={{padding:"9px 11px",background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:6,fontSize:13,color:"#374151"}}>{co[f.k]}</div>
-                  }
+                  {isAdmin?<input className="ifield" value={co[f.k]} onChange={e=>setCo(p=>({...p,[f.k]:e.target.value}))}/>:<div style={{padding:"9px 11px",background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:6,fontSize:13}}>{co[f.k]}</div>}
                 </div>
               ))}
             </div>
             <div className="card" style={{padding:20,marginBottom:14}}>
-              <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🧾 インボイス登録番号</div>
-              {isAdmin
-                ? <><input className="ifield" placeholder="T1234567890123（T+13桁）" value={co.invoiceNo} onChange={e=>setCo(p=>({...p,invoiceNo:e.target.value}))}/><div style={{fontSize:11,color:"#9ca3af",marginTop:6}}>国税庁に登録済みの番号を入力してください。</div></>
-                : <div style={{padding:"9px 11px",background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:6,fontSize:13,color:"#374151"}}>{co.invoiceNo}</div>
-              }
+              <div style={{fontWeight:700,fontSize:13,marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🧾 インボイス登録番号</div>
+              {isAdmin?<><input className="ifield" placeholder="T1234567890123（T+13桁）" value={co.invoiceNo} onChange={e=>setCo(p=>({...p,invoiceNo:e.target.value}))}/><div style={{fontSize:11,color:"#9ca3af",marginTop:6}}>国税庁に登録済みの番号を入力してください。</div></>:<div style={{padding:"9px 11px",background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:6,fontSize:13}}>{co.invoiceNo}</div>}
             </div>
             <div className="card" style={{padding:20,marginBottom:14}}>
-              <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>💴 消費税率</div>
+              <div style={{fontWeight:700,fontSize:13,marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>💴 消費税率</div>
               {isAdmin?(
                 <>
                   <div style={{display:"flex",alignItems:"center",gap:12}}>
-                    <input className="ifield" type="number" value={taxRate} min="0" max="30"
-                      onChange={e=>setTaxRate(Number(e.target.value))}
-                      style={{maxWidth:100,textAlign:"right",fontSize:18,fontWeight:700}}/>
-                    <span style={{fontSize:16,fontWeight:700,color:"#374151"}}>%</span>
+                    <input className="ifield" type="number" value={taxRate} min="0" max="30" onChange={e=>setTaxRate(Number(e.target.value))} style={{maxWidth:100,textAlign:"right",fontSize:18,fontWeight:700}}/>
+                    <span style={{fontSize:16,fontWeight:700}}>%</span>
                   </div>
                   <div style={{display:"flex",gap:8,marginTop:10}}>
-                    {[0,8,10].map(r=>(
-                      <button key={r} onClick={()=>setTaxRate(r)}
-                        style={{background:taxRate===r?AC:"#f3f4f6",color:taxRate===r?"#fff":"#374151",border:"none",padding:"6px 14px",borderRadius:6,fontSize:12,fontWeight:700,cursor:"pointer"}}>
-                        {r}%
-                      </button>
-                    ))}
+                    {[0,8,10].map(r=><button key={r} onClick={()=>setTaxRate(r)} style={{background:taxRate===r?AC:"#f3f4f6",color:taxRate===r?"#fff":"#374151",border:"none",padding:"6px 14px",borderRadius:6,fontSize:12,fontWeight:700,cursor:"pointer"}}>{r}%</button>)}
                   </div>
                 </>
-              ):(
-                <div style={{padding:"9px 11px",background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:6,fontSize:18,fontWeight:700,color:"#374151"}}>{taxRate}%</div>
-              )}
+              ):<div style={{padding:"9px 11px",background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:6,fontSize:18,fontWeight:700}}>{taxRate}%</div>}
             </div>
             <div className="card" style={{padding:20,marginBottom:20}}>
-              <div style={{fontWeight:700,fontSize:13,color:"#374151",marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🏦 振込先口座</div>
+              <div style={{fontWeight:700,fontSize:13,marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🏦 振込先口座</div>
               {[{k:"bankName",l:"銀行名"},{k:"bankBranch",l:"支店名"},{k:"bankType",l:"口座種別"},{k:"bankNo",l:"口座番号"},{k:"bankHolder",l:"口座名義（カナ）"}].map(f=>(
                 <div key={f.k} style={{marginBottom:12}}>
                   <label className="lbl">{f.l}</label>
-                  {isAdmin
-                    ? <input className="ifield" value={co[f.k]} onChange={e=>setCo(p=>({...p,[f.k]:e.target.value}))}/>
-                    : <div style={{padding:"9px 11px",background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:6,fontSize:13,color:"#374151"}}>{co[f.k]}</div>
-                  }
+                  {isAdmin?<input className="ifield" value={co[f.k]} onChange={e=>setCo(p=>({...p,[f.k]:e.target.value}))}/>:<div style={{padding:"9px 11px",background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:6,fontSize:13}}>{co[f.k]}</div>}
                 </div>
               ))}
             </div>
@@ -1085,8 +827,7 @@ function App(){
       {!sub&&(
         <div className="np" style={{position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1px solid #e5e7eb",display:"flex",height:64,zIndex:200,boxShadow:"0 -2px 8px rgba(0,0,0,.06)"}}>
           {NAV.map(n=>(
-            <button key={n.id} onClick={()=>setTab(n.id)}
-              style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,background:"none",border:"none",cursor:"pointer",color:tab===n.id?AC:"#9ca3af",padding:"8px 0",position:"relative"}}>
+            <button key={n.id} onClick={()=>setTab(n.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,background:"none",border:"none",cursor:"pointer",color:tab===n.id?AC:"#9ca3af",padding:"8px 0",position:"relative"}}>
               {n.svg}
               <span style={{fontSize:10,fontWeight:tab===n.id?700:500}}>{n.label}</span>
               {tab===n.id&&<div style={{width:20,height:2,background:AC,borderRadius:1,position:"absolute",bottom:6}}/>}
@@ -1094,7 +835,6 @@ function App(){
           ))}
         </div>
       )}
-
     </div>
   );
 }

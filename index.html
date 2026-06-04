@@ -219,7 +219,7 @@ function InvitePanel({user}){
     const {error}=await sb.from("members").insert({email,role,invited_by:user.email});
     if(error){ setMsg(`❌ エラー: ${error.message}`); }
     else {
-      setMsg(`✅ ${email} を登録しました。本人に「${window.location.origin}」から新規登録するよう伝えてください。`);
+      setMsg(`✅ 登録完了！\n\n招待された方に以下を伝えてください：\n\n📧 登録メールアドレス：${email}\n🔗 登録URL：${window.location.origin}\n\n上記URLを開いて「新規登録はこちら」から登録してください。`);
       setEmail(""); setShowInvite(false); loadMembers();
     }
     setLoading(false);
@@ -241,6 +241,8 @@ function InvitePanel({user}){
 
   return (
     <div>
+      {/* 招待完了メッセージ */}
+      {msg&&<div style={{fontSize:12,padding:"12px 14px",background:msg.includes("✅")?"#f0fdf4":"#fef2f2",border:`1px solid ${msg.includes("✅")?"#bbf7d0":"#fecaca"}`,borderRadius:8,marginBottom:14,color:msg.includes("✅")?"#16a34a":"#ef4444",lineHeight:1.8,whiteSpace:"pre-line"}}>{msg}</div>}
       {/* メンバー一覧 */}
       <div style={{marginBottom:14}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
@@ -268,7 +270,7 @@ function InvitePanel({user}){
             <button className="bp" style={{width:"100%"}} onClick={invite} disabled={loading}>
               {loading?"送信中...":"招待する"}
             </button>
-            {msg&&<div style={{fontSize:12,padding:"8px 12px",background:msg.includes("✅")?"#f0fdf4":"#fef2f2",border:`1px solid ${msg.includes("✅")?"#bbf7d0":"#fecaca"}`,borderRadius:6,marginTop:10,color:msg.includes("✅")?"#16a34a":"#ef4444",lineHeight:1.6}}>{msg}</div>}
+            {msg&&<div style={{fontSize:12,padding:"12px 14px",background:msg.includes("✅")?"#f0fdf4":"#fef2f2",border:`1px solid ${msg.includes("✅")?"#bbf7d0":"#fecaca"}`,borderRadius:8,marginBottom:14,color:msg.includes("✅")?"#16a34a":"#ef4444",lineHeight:1.8,whiteSpace:"pre-line"}}>{msg}</div>}
           </div>
         )}
 

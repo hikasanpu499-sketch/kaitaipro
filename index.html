@@ -450,23 +450,18 @@ function App(){
   useEffect(()=>{if(companyId){loadDocs();loadSettings();}},[companyId]);
 
   async function loadCompany(){
-    // membersテーブルで自分のレコードを1件だけ取得（RLS対応）
-    const{data:member,error:memErr}=await sb.from("members").select("company_id,role").eq("email",user.email).limit(1).single();
+    // membersテーブルで自分のレコードを取得（RLS対応）
+    const{data:member}=await sb.from("members").select("company_id,role").eq("email",user.email).limit(1).single();
     if(member&&member.company_id){
       setCompanyId(member.company_id);
       setRole(member.role);
       return;
     }
-    // companiesテーブルでオーナーとして確認
+    // membersにいない場合はcompaniesで確認（念のため）
     const{data:company}=await sb.from("companies").select("id").eq("owner_email",user.email).limit(1).single();
     if(company){
       setCompanyId(company.id);
       setRole("admin");
-      // membersにいない場合のみinsert（重複防止）
-      if(!member){
-        await sb.from("members").insert({email:user.email,role:"admin",company_id:company.id,invited_by:user.email});
-      }
-      return;
     }
   }
 

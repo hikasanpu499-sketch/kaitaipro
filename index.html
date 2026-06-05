@@ -287,11 +287,11 @@ function LoginScreen(){
     // 管理者をmembersにも登録
     const{error:memberErr}=await sb.from("members").insert({email,role:"admin",company_id:company.id,invited_by:email});
     if(memberErr){setErr(`メンバー登録エラー: ${memberErr.message}`);setLoading(false);return;}
-    // 会社情報をcompany_settingsに初期保存
-    await sb.from("company_settings").insert({name:companyName,company_id:company.id,tax_rate:10,bank_type:"普通"});
     // 登録後に自動ログイン
     const{error:loginErr}=await sb.auth.signInWithPassword({email,password:pass});
     if(loginErr){setErr("✅ 登録完了！ログインしてください。");setLoading(false);return;}
+    // ログイン後に会社情報をcompany_settingsに初期保存
+    await sb.from("company_settings").insert({name:companyName,company_id:company.id,tax_rate:10,bank_type:"普通"});
     setLoading(false);
   }
 
@@ -446,7 +446,7 @@ function App(){
     return()=>subscription.unsubscribe();
   },[]);
 
-  useEffect(()=>{if(user){loadCompany();}},[user]);
+  useEffect(()=>{if(user&&!companyId){loadCompany();}},[user]);
   useEffect(()=>{if(companyId){loadDocs();loadSettings();}},[companyId]);
 
   async function loadCompany(){

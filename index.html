@@ -452,7 +452,7 @@ function App(){
   },[]);
 
   useEffect(()=>{if(user&&!companyId){loadCompany();}},[user]);
-  useEffect(()=>{if(companyId){loadDocs();loadSettings();}},[companyId]);
+  useEffect(()=>{if(companyId){setCo(EMPTY_CO);loadDocs();loadSettings();}},[companyId]);
 
   async function loadCompany(){
     // membersテーブルで自分のレコードを取得（RLS対応）

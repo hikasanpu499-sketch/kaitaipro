@@ -818,7 +818,8 @@ function App(){
             )}
             {!isAdmin&&<div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#92400e"}}>⚠️ 設定の変更は管理者のみ行えます。</div>}
             <div className="card" style={{padding:20,marginBottom:14}}>
-              <div style={{fontWeight:700,fontSize:13,marginBottom:14,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🏢 会社情報</div>
+              <div style={{fontWeight:700,fontSize:13,marginBottom:6,paddingBottom:10,borderBottom:"1px solid #f3f4f6"}}>🏢 会社情報</div>
+              <div style={{fontSize:11,color:"#ef4444",marginBottom:12}}>⚠️ 書類機能を正しく使うために、全項目を入力してください</div>
               {[{k:"name",l:"会社名"},{k:"zipcode",l:"郵便番号"},{k:"address",l:"住所"},{k:"tel",l:"電話番号"}].map(f=>(
                 <div key={f.k} style={{marginBottom:12}}>
                   <label className="lbl">{f.l}</label>

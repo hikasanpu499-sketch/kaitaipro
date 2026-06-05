@@ -187,8 +187,8 @@ function InvitePanel({user,companyId}){
   const [codes,setCodes]=useState([]);
   const [showCodeForm,setShowCodeForm]=useState(false);
   useEffect(()=>{loadMembers();loadCodes();},[]);
-  async function loadMembers(){const{data}=await sb.from("members").select("*").eq("company_id",companyId).order("id",{ascending:true});if(data)setMembers(data);}
-  async function loadCodes(){const{data}=await sb.from("invite_codes").select("*").eq("company_id",companyId).order("id",{ascending:false});if(data)setCodes(data);}
+  async function loadMembers(){const{data}=await sb.from("members").select("*").eq("company_id",parseInt(companyId)).order("id",{ascending:true});if(data)setMembers(data);}
+  async function loadCodes(){const{data}=await sb.from("invite_codes").select("*").eq("company_id",parseInt(companyId)).order("id",{ascending:false});if(data)setCodes(data);}
   function generateCode(r){const p=r==="admin"?"ADMIN":"STAFF";const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";for(let i=0;i<6;i++)s+=c[Math.floor(Math.random()*c.length)];return`${p}-${s}`;}
   async function createCode(){
     setLoading(true);setMsg("");
@@ -383,7 +383,7 @@ function SetupScreen({co,setCo,onComplete,companyId}){
     if(!co.name)return alert("会社名を入力してください");
     setLoading(true);
     const settings={name:co.name,zipcode:co.zipcode,address:co.address,tel:co.tel,invoice:co.invoiceNo,bank_name:co.bankName,bank_branch:co.bankBranch,bank_type:co.bankType,bank_no:co.bankNo,bank_holder:co.bankHolder,tax_rate:10,company_id:companyId};
-    const{data:existing}=await sb.from("company_settings").select("id").eq("company_id",companyId).limit(1).single();
+    const{data:existing}=await sb.from("company_settings").select("id").eq("company_id",parseInt(companyId)).limit(1).single();
     if(existing)await sb.from("company_settings").update(settings).eq("id",existing.id);
     else await sb.from("company_settings").insert(settings);
     setLoading(false);
@@ -494,7 +494,7 @@ function App(){
   async function saveSettings(){
     if(!companyId){alert("❌ 会社IDが取得できていません。再ログインしてください。");return;}
     const settings={name:co.name,zipcode:co.zipcode,address:co.address,tel:co.tel,invoice:co.invoiceNo,bank_name:co.bankName,bank_branch:co.bankBranch,bank_type:co.bankType,bank_no:co.bankNo,bank_holder:co.bankHolder,tax_rate:taxRate,company_id:companyId};
-    const{data:existing,error:selErr}=await sb.from("company_settings").select("id").eq("company_id",companyId).limit(1).single();
+    const{data:existing,error:selErr}=await sb.from("company_settings").select("id").eq("company_id",parseInt(companyId)).limit(1).single();
     if(selErr&&selErr.code!=="PGRST116"){alert("❌ 検索エラー: "+selErr.message);return;}
     if(existing){
       const{error:updErr}=await sb.from("company_settings").update(settings).eq("id",existing.id);

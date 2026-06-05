@@ -186,7 +186,7 @@ function InvitePanel({user,companyId}){
   const [members,setMembers]=useState([]);
   const [codes,setCodes]=useState([]);
   const [showCodeForm,setShowCodeForm]=useState(false);
-  useEffect(()=>{loadMembers();loadCodes();},[]);
+  useEffect(()=>{if(companyId){loadMembers();loadCodes();}},[companyId]);
   async function loadMembers(){const{data}=await sb.from("members").select("*").eq("company_id",parseInt(companyId)).order("id",{ascending:true});if(data)setMembers(data);}
   async function loadCodes(){const{data}=await sb.from("invite_codes").select("*").eq("company_id",parseInt(companyId)).order("id",{ascending:false});if(data)setCodes(data);}
   function generateCode(r){const p=r==="admin"?"ADMIN":"STAFF";const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";for(let i=0;i<6;i++)s+=c[Math.floor(Math.random()*c.length)];return`${p}-${s}`;}
@@ -299,8 +299,11 @@ function LoginScreen({onSignup}){
   async function handleInviteSignup(){
     setLoading(true);setErr("");
     if(!code){setErr("招待コードを入力してください");setLoading(false);return;}
+    // ログイン前に招待コードを取得（RLSに引っかからないように先に取得）
     const{data:codeData,error:codeErr}=await sb.from("invite_codes").select("*").eq("code",code.toUpperCase()).single();
     if(codeErr||!codeData){setErr("招待コードが無効です");setLoading(false);return;}
+    if(!codeData.company_id){setErr("招待コードに会社情報が紐付いていません。管理者に再発行を依頼してください。");setLoading(false);return;}
+    const companyIdInt=parseInt(codeData.company_id);
     // 既存セッションを必ずサインアウト
     await sb.auth.signOut();
     // ログインを試みる
@@ -314,7 +317,6 @@ function LoginScreen({onSignup}){
     }
     // membersを更新または新規作成
     const{data:existingMember}=await sb.from("members").select("id").eq("email",email).single();
-    const companyIdInt=parseInt(codeData.company_id);
     if(existingMember){
       const{error:updateErr}=await sb.from("members").update({role:codeData.role,company_id:companyIdInt,invited_by:codeData.created_by}).eq("email",email);
       if(updateErr){setErr("メンバー更新エラー: "+updateErr.message);setLoading(false);return;}
@@ -461,14 +463,14 @@ function App(){
     // membersテーブルで自分のレコードを取得（RLS対応）
     const{data:member}=await sb.from("members").select("company_id,role").eq("email",user.email).limit(1).single();
     if(member&&member.company_id){
-      setCompanyId(member.company_id);
+      setCompanyId(parseInt(member.company_id));
       setRole(member.role);
       return;
     }
     // membersにいない場合はcompaniesで確認（念のため）
     const{data:company}=await sb.from("companies").select("id").eq("owner_email",user.email).limit(1).single();
     if(company){
-      setCompanyId(company.id);
+      setCompanyId(parseInt(company.id));
       setRole("admin");
     }
   }

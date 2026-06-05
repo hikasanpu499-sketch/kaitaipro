@@ -314,10 +314,13 @@ function LoginScreen({onSignup}){
     }
     // membersを更新または新規作成
     const{data:existingMember}=await sb.from("members").select("id").eq("email",email).single();
+    const companyIdInt=parseInt(codeData.company_id);
     if(existingMember){
-      await sb.from("members").update({role:codeData.role,company_id:codeData.company_id,invited_by:codeData.created_by}).eq("email",email);
+      const{error:updateErr}=await sb.from("members").update({role:codeData.role,company_id:companyIdInt,invited_by:codeData.created_by}).eq("email",email);
+      if(updateErr){setErr("メンバー更新エラー: "+updateErr.message);setLoading(false);return;}
     }else{
-      await sb.from("members").insert({email,role:codeData.role,invited_by:codeData.created_by,company_id:codeData.company_id});
+      const{error:insertErr}=await sb.from("members").insert({email,role:codeData.role,invited_by:codeData.created_by,company_id:companyIdInt});
+      if(insertErr){setErr("メンバー登録エラー: "+insertErr.message);setLoading(false);return;}
     }
     setLoading(false);
   }

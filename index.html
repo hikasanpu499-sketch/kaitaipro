@@ -253,7 +253,7 @@ function InvitePanel({user,companyId}){
 }
 
 // ── LoginScreen ──────────────────────────────────────────
-function LoginScreen(){
+function LoginScreen({onSignup}){
   const [mode,setMode]=useState("login");
   const [email,setEmail]=useState("");
   const [pass,setPass]=useState("");
@@ -292,6 +292,7 @@ function LoginScreen(){
     if(loginErr){setErr("✅ 登録完了！ログインしてください。");setLoading(false);return;}
     // ログイン後に会社情報をcompany_settingsに初期保存
     await sb.from("company_settings").insert({name:companyName,company_id:company.id,tax_rate:10,bank_type:"普通"});
+    if(onSignup)onSignup(companyName);
     setLoading(false);
   }
 
@@ -373,13 +374,13 @@ function LoginScreen(){
 }
 
 // ── SetupScreen ──────────────────────────────────────────
-function SetupScreen({co,setCo,onComplete}){
+function SetupScreen({co,setCo,onComplete,companyId}){
   const[loading,setLoading]=useState(false);
   async function handleSave(){
     if(!co.name)return alert("会社名を入力してください");
     setLoading(true);
-    const settings={name:co.name,zipcode:co.zipcode,address:co.address,tel:co.tel,invoice:co.invoiceNo,bank_name:co.bankName,bank_branch:co.bankBranch,bank_type:co.bankType,bank_no:co.bankNo,bank_holder:co.bankHolder,tax_rate:10};
-    const{data:existing}=await sb.from("company_settings").select("id").limit(1).single();
+    const settings={name:co.name,zipcode:co.zipcode,address:co.address,tel:co.tel,invoice:co.invoiceNo,bank_name:co.bankName,bank_branch:co.bankBranch,bank_type:co.bankType,bank_no:co.bankNo,bank_holder:co.bankHolder,tax_rate:10,company_id:companyId};
+    const{data:existing}=await sb.from("company_settings").select("id").eq("company_id",companyId).limit(1).single();
     if(existing)await sb.from("company_settings").update(settings).eq("id",existing.id);
     else await sb.from("company_settings").insert(settings);
     setLoading(false);
@@ -478,7 +479,8 @@ function App(){
 
   async function loadSettings(){
     if(!companyId) return;
-    const{data}=await sb.from("company_settings").select("*").eq("company_id",companyId).limit(1).single();
+    const{data,error}=await sb.from("company_settings").select("*").eq("company_id",companyId).limit(1).single();
+    if(error&&error.code!=="PGRST116") console.error("loadSettings error:",error);
     if(data){
       setCo({name:data.name||"",zipcode:data.zipcode||"",address:data.address||"",tel:data.tel||"",invoiceNo:data.invoice||"",bankName:data.bank_name||"",bankBranch:data.bank_branch||"",bankType:data.bank_type||"普通",bankNo:data.bank_no||"",bankHolder:data.bank_holder||""});
       if(data.tax_rate)setTaxRate(data.tax_rate);
@@ -535,8 +537,8 @@ function App(){
   const filtered=filter==="ALL"?docs:docs.filter(d=>d.flowStatus===filter);
 
   if(authLoading)return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f3f4f6"}}><div style={{color:AC,fontFamily:"'Bebas Neue',sans-serif",fontSize:32,letterSpacing:"0.1em"}}>読み込み中...</div></div>;
-  if(!user)return<LoginScreen/>;
-  if(isAdmin&&companyId&&!setupDone&&!dbLoading)return<SetupScreen co={co} setCo={setCo} onComplete={()=>setSetupDone(true)}/>;
+  if(!user)return<LoginScreen onSignup={(name)=>setCo(p=>({...p,name}))}/>;
+  if(isAdmin&&companyId&&!setupDone&&!dbLoading)return<SetupScreen co={co} setCo={setCo} companyId={companyId} onComplete={()=>setSetupDone(true)}/>;
   if(showPrint&&printTarget)return<PrintView doc={printTarget} co={co} tax={TAX} onClose={()=>setShowPrint(false)}/>;
 
   const NAV=[

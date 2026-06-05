@@ -503,7 +503,7 @@ function App(){
     alert("✅ 保存しました！");
   }
 
-  async function logout(){await sb.auth.signOut();setDocs([]);setCompanyId(null);setSetupDone(false);goHome();}
+  async function logout(){await sb.auth.signOut();setDocs([]);setCompanyId(null);setSetupDone(false);setRole("staff");setCo(EMPTY_CO);setTaxRate(10);goHome();}
   function goHome(){setTab("home");setSub(null);setForm(null);setSelected(null);}
   function startNew(){setForm({no:genNo(),createdAt:today(),dueDate:addDays(today(),30),flowStatus:"見積中",client:{name:"",address:"",person:"",tel:""},site:"",items:[emptyItem()],memo:""});setSub("new");setTab("home");}
 

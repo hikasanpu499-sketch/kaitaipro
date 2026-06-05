@@ -287,6 +287,8 @@ function LoginScreen(){
     // 管理者をmembersにも登録
     const{error:memberErr}=await sb.from("members").insert({email,role:"admin",company_id:company.id,invited_by:email});
     if(memberErr){setErr(`メンバー登録エラー: ${memberErr.message}`);setLoading(false);return;}
+    // 会社情報をcompany_settingsに初期保存
+    await sb.from("company_settings").insert({name:companyName,company_id:company.id,tax_rate:10,bank_type:"普通"});
     // 登録後に自動ログイン
     const{error:loginErr}=await sb.auth.signInWithPassword({email,password:pass});
     if(loginErr){setErr("✅ 登録完了！ログインしてください。");setLoading(false);return;}
@@ -448,42 +450,23 @@ function App(){
   useEffect(()=>{if(companyId){loadDocs();loadSettings();}},[companyId]);
 
   async function loadCompany(){
-    // 1) membersテーブルでcompany_idを確認（adminを優先）
-    const{data:members}=await sb.from("members").select("company_id,role").eq("email",user.email);
-    // 複数レコードある場合はadminを優先
-    const member = members&&members.length>0
-      ? (members.find(m=>m.role==="admin")||members[0])
-      : null;
+    // membersテーブルで自分のレコードを1件だけ取得（RLS対応）
+    const{data:member,error:memErr}=await sb.from("members").select("company_id,role").eq("email",user.email).limit(1).single();
     if(member&&member.company_id){
       setCompanyId(member.company_id);
       setRole(member.role);
       return;
     }
-    // 2) companiesテーブルでオーナーとして確認
-    const{data:company}=await sb.from("companies").select("id").eq("owner_email",user.email).single();
+    // companiesテーブルでオーナーとして確認
+    const{data:company}=await sb.from("companies").select("id").eq("owner_email",user.email).limit(1).single();
     if(company){
       setCompanyId(company.id);
       setRole("admin");
       // membersにいない場合のみinsert（重複防止）
       if(!member){
         await sb.from("members").insert({email:user.email,role:"admin",company_id:company.id,invited_by:user.email});
-      }else{
-        await sb.from("members").update({company_id:company.id,role:"admin"}).eq("email",user.email);
       }
       return;
-    }
-    // 3) membersにいるがcompany_idがない場合
-    if(member){
-      alert("招待コードに会社情報が紐付いていません。管理者に再発行を依頼してください。");
-      await sb.auth.signOut();
-      return;
-    }
-    // membersにもいない完全新規 → 会社を自動作成
-    const{data:newCompany}=await sb.from("companies").insert({name:"未設定",owner_email:user.email}).select().single();
-    if(newCompany){
-      setCompanyId(newCompany.id);
-      setRole("admin");
-      await sb.from("members").insert({email:user.email,role:"admin",company_id:newCompany.id,invited_by:user.email});
     }
   }
 
